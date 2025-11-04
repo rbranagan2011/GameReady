@@ -1,0 +1,306 @@
+<div class="section" style="padding:12px;">
+  <div style="display:flex; gap:12px;">
+    <!-- Left bubble: Submit today's report / Completed -->
+    <button id="action-submit" class="btn btn-light flex-fill" style="border:1px solid rgba(0,0,0,0.08); border-radius:14px; padding:14px; display:flex; align-items:center; gap:10px; justify-content:center;">
+      {% if today_has_report %}
+        <span class="badge rounded-pill text-bg-success" style="min-width:34px; height:34px; display:inline-flex; align-items:center; justify-content:center; font-weight:800;">{{ today_score }}</span>
+        <div style="text-align:left;">
+          <div style="font-weight:700;">Completed</div>
+          <div style="font-size:12px; color:#6b7280;">Today · {{ today_tag_name }}</div>
+        </div>
+      {% else %}
+        <span class="badge rounded-pill text-bg-primary" style="min-width:34px; height:34px; display:inline-flex; align-items:center; justify-content:center;">●</span>
+        <div style="text-align:left;">
+          <div style="font-weight:700;">Submit today's report</div>
+          <div style="font-size:12px; color:#6b7280;">{{ today_tag_name }}</div>
+        </div>
+      {% endif %}
+    </button>
+
+    <!-- Right bubble: Current status -->
+    <button id="action-status" class="btn btn-light flex-fill" style="border:1px solid rgba(0,0,0,0.08); border-radius:14px; padding:14px; display:flex; align-items:center; gap:10px; justify-content:center;">
+      <span id="status-chip" class="badge rounded-pill" style="min-width:34px; height:34px; display:inline-flex; align-items:center; justify-content:center;"></span>
+      <div style="text-align:left;">
+        <div style="font-weight:700;">Current status</div>
+        <div id="status-sub" style="font-size:12px; color:#6b7280;"></div>
+      </div>
+    </button>
+  </div>
+</div>
+
+<!-- Status Selection Modal -->
+<div id="statusModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="statusModalTitle" style="display:none;">
+  <div class="modal-card" role="document" style="max-width:420px;">
+    <button class="close-btn" id="statusModalClose" aria-label="Close" style="border:none; background:#eee; border-radius:8px; padding:6px 10px; float:right; cursor:pointer;">✕</button>
+    <div class="modal-title" id="statusModalTitle" style="font-weight:700; margin-bottom:16px; margin-top:8px;">Set Your Status</div>
+    <div style="margin-bottom:16px;">
+      <div style="font-size:14px; color:#6b7280; margin-bottom:12px;">Select a status:</div>
+      <div style="display:flex; flex-direction:column; gap:8px;">
+        <button class="status-option" data-status="AVAILABLE" style="display:flex; align-items:center; gap:12px; padding:12px 16px; border:2px solid #e0e0e0; border-radius:10px; background:#fff; cursor:pointer; transition:all 0.2s; text-align:left;">
+          <span class="badge rounded-pill text-bg-success" style="min-width:32px; height:32px; display:inline-flex; align-items:center; justify-content:center; font-weight:600;">✓</span>
+          <div style="flex:1;">
+            <div style="font-weight:600; color:#1f2937;">Available</div>
+            <div style="font-size:12px; color:#6b7280;">Ready to train and compete</div>
+          </div>
+        </button>
+        <button class="status-option" data-status="INJURED" style="display:flex; align-items:center; gap:12px; padding:12px 16px; border:2px solid #e0e0e0; border-radius:10px; background:#fff; cursor:pointer; transition:all 0.2s; text-align:left;">
+          <span class="badge rounded-pill text-bg-danger" style="min-width:32px; height:32px; display:inline-flex; align-items:center; justify-content:center; font-weight:600;">I</span>
+          <div style="flex:1;">
+            <div style="font-weight:600; color:#1f2937;">Injured</div>
+            <div style="font-size:12px; color:#6b7280;">Currently injured or recovering</div>
+          </div>
+        </button>
+        <button class="status-option" data-status="SICK" style="display:flex; align-items:center; gap:12px; padding:12px 16px; border:2px solid #e0e0e0; border-radius:10px; background:#fff; cursor:pointer; transition:all 0.2s; text-align:left;">
+          <span class="badge rounded-pill text-bg-warning" style="min-width:32px; height:32px; display:inline-flex; align-items:center; justify-content:center; font-weight:600;">S</span>
+          <div style="flex:1;">
+            <div style="font-weight:600; color:#1f2937;">Sick</div>
+            <div style="font-size:12px; color:#6b7280;">Illness or medical condition</div>
+          </div>
+        </button>
+        <button class="status-option" data-status="EXCUSED" style="display:flex; align-items:center; gap:12px; padding:12px 16px; border:2px solid #e0e0e0; border-radius:10px; background:#fff; cursor:pointer; transition:all 0.2s; text-align:left;">
+          <span class="badge rounded-pill text-bg-secondary" style="min-width:32px; height:32px; display:inline-flex; align-items:center; justify-content:center; font-weight:600;">E</span>
+          <div style="flex:1;">
+            <div style="font-weight:600; color:#1f2937;">Excused</div>
+            <div style="font-size:12px; color:#6b7280;">Excused from training/competition</div>
+          </div>
+        </button>
+      </div>
+    </div>
+    <div style="border-top:1px solid #e0e0e0; padding-top:16px; margin-top:16px;">
+      <div style="font-size:14px; color:#6b7280; margin-bottom:8px;">Optional note:</div>
+      <textarea id="statusNote" placeholder="Add a brief note (optional)" maxlength="140" style="width:100%; padding:10px; border:1px solid #e0e0e0; border-radius:8px; font-size:14px; resize:vertical; min-height:60px; font-family:inherit;">{{ status_note|default:"" }}</textarea>
+      <div style="text-align:right; font-size:12px; color:#9ca3af; margin-top:4px;"><span id="noteCharCount">0</span>/140</div>
+    </div>
+    <button id="saveStatusBtn" style="width:100%; margin-top:16px; padding:12px; font-weight:600; border-radius:8px; border:none; background:#0d6efd; color:#fff; cursor:pointer; transition:background 0.2s;">Save Status</button>
+  </div>
+</div>
+
+<style>
+.status-option:hover {
+  border-color: #0d6efd !important;
+  background: #f0f7ff !important;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+.status-option:active {
+  transform: translateY(0);
+}
+.status-option.selected {
+  border-color: #0d6efd !important;
+  background: #e7f3ff !important;
+}
+#saveStatusBtn:hover {
+  background: #0b5ed7 !important;
+}
+#statusModal.modal-animate-from .modal-card {
+  transform-origin: var(--anchor-x, 50%) var(--anchor-y, 50%);
+  animation: pop-in 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+@keyframes pop-in {
+  from { opacity: 0; transform: scale(0.8); }
+  to { opacity: 1; transform: scale(1); }
+}
+</style>
+
+<script>
+(function(){
+  // Submit button behavior
+  const submitBtn = document.getElementById('action-submit');
+  if(submitBtn){
+    submitBtn.addEventListener('click', function(){
+      {% if today_has_report %}
+        // If already submitted, open today's metrics modal
+        const modal = document.getElementById('metricsModal');
+        const modalBody = document.getElementById('modalBody');
+        const modalTitle = document.getElementById('modalTitle');
+        const closeBtn = document.getElementById('modalClose');
+        if(!modal || !modalBody || !modalTitle) return;
+        
+        // Use today's date from Django context (avoids timezone issues)
+        const dateStr = '{{ today_date_str|default:"" }}';
+        if(!dateStr) return;
+        
+        // Open modal
+        modal.style.display = 'flex';
+        setTimeout(()=>{ if(closeBtn) closeBtn.focus(); }, 0);
+        modalTitle.textContent = `Metrics for ${dateStr}`;
+        modalBody.innerHTML = '<div style="text-align:center; color:#6b7280;">Loading…</div>';
+        
+        // Fetch today's metrics
+        const metricsUrl = '{{ metrics_base_url|default:"/player-dashboard/metrics/" }}';
+        fetch(`${metricsUrl}?date=${dateStr}`)
+          .then(r=>r.json())
+          .then(data=>{
+            if(!data.success){ 
+              modalBody.innerHTML = `<div style='color:#b91c1c;text-align:center;'>${data.message||'Failed to load'}</div>`; 
+              return; 
+            }
+            const items = data.metrics.map(m=>`<div class='metric-item'><div style='font-weight:700;font-size:18px;'>${m.score}</div><div style='font-size:12px;color:#6b7280;'>${m.name}</div></div>`).join('');
+            modalBody.innerHTML = `<div class='metric-grid'>${items}</div>`;
+          })
+          .catch(()=>{ modalBody.innerHTML = `<div style='color:#b91c1c;text-align:center;'>Failed to load</div>`; });
+      {% else %}
+        window.location.href = '{% url "core:submit_report" %}';
+      {% endif %}
+    });
+  }
+
+  // Status bubble
+  const statusBtn = document.getElementById('action-status');
+  const chip = document.getElementById('status-chip');
+  const sub = document.getElementById('status-sub');
+
+  const statusColors = {
+    'AVAILABLE': 'text-bg-success',
+    'INJURED': 'text-bg-danger',
+    'SICK': 'text-bg-warning',
+    'EXCUSED': 'text-bg-secondary'
+  };
+
+  function renderStatus(payload){
+    if(!chip||!sub) return;
+    const s = payload.current_status || '{{ current_status|default:"AVAILABLE" }}';
+    chip.className = 'badge rounded-pill ' + (statusColors[s]||'text-bg-secondary');
+    chip.textContent = s === 'AVAILABLE' ? '✓' : s.charAt(0);
+    const note = payload.status_note || '{{ status_note|default:"" }}';
+    const when = payload.status_updated_at || '';
+    sub.textContent = (note ? note : s.replace('_',' ').toLowerCase().replace(/\b\w/g,c=>c.toUpperCase())) + (when? ` · ${when}`:'');
+  }
+
+  function fetchStatus(){
+    fetch('{% url "core:player_status" %}')
+      .then(r=>r.json())
+      .then(d=>{ if(d.success) renderStatus(d); });
+  }
+
+  renderStatus({
+    current_status: '{{ current_status|default:"AVAILABLE" }}',
+    status_note: '{{ status_note|default:"" }}',
+    status_updated_at: '{% if status_updated_at %}{{ status_updated_at|date:"Y-m-d H:i" }}{% endif %}'
+  });
+
+  // Status modal handling
+  const statusModal = document.getElementById('statusModal');
+  const statusModalClose = document.getElementById('statusModalClose');
+  const statusOptions = document.querySelectorAll('.status-option');
+  const statusNote = document.getElementById('statusNote');
+  const noteCharCount = document.getElementById('noteCharCount');
+  let selectedStatus = null;
+
+  // Update character count
+  if(statusNote && noteCharCount){
+    statusNote.addEventListener('input', function(){
+      noteCharCount.textContent = this.value.length;
+    });
+    // Set initial count
+    noteCharCount.textContent = statusNote.value.length;
+  }
+
+  // Close modal handlers
+  if(statusModalClose){
+    statusModalClose.addEventListener('click', function(){
+      statusModal.style.display = 'none';
+      statusModal.classList.remove('modal-animate-from');
+      selectedStatus = null;
+      // Reset selected state
+      statusOptions.forEach(opt => opt.classList.remove('selected'));
+    });
+  }
+  if(statusModal){
+    statusModal.addEventListener('click', function(e){
+      if(e.target === statusModal){
+        statusModal.style.display = 'none';
+        statusModal.classList.remove('modal-animate-from');
+        selectedStatus = null;
+        statusOptions.forEach(opt => opt.classList.remove('selected'));
+      }
+    });
+  }
+
+  // Status option click handlers
+  statusOptions.forEach(function(option){
+    option.addEventListener('click', function(){
+      // Remove selected class from all options
+      statusOptions.forEach(opt => opt.classList.remove('selected'));
+      // Add selected class to clicked option
+      this.classList.add('selected');
+      selectedStatus = this.getAttribute('data-status');
+    });
+  });
+
+  // Open status modal when status button is clicked
+  if(statusBtn){
+    statusBtn.addEventListener('click', function(e){
+      e.stopPropagation();
+      
+      // Get click position for animation
+      const rect = this.getBoundingClientRect();
+      const anchorX = ((rect.left + rect.right) / 2 / window.innerWidth) * 100;
+      const anchorY = ((rect.top + rect.bottom) / 2 / window.innerHeight) * 100;
+      
+      // Set current status as selected
+      const currentStatus = '{{ current_status|default:"AVAILABLE" }}';
+      statusOptions.forEach(function(opt){
+        opt.classList.remove('selected');
+        if(opt.getAttribute('data-status') === currentStatus){
+          opt.classList.add('selected');
+          selectedStatus = currentStatus;
+        }
+      });
+      // Set current note if exists
+      if(statusNote){
+        statusNote.value = '{{ status_note|default:"" }}';
+        if(noteCharCount) noteCharCount.textContent = statusNote.value.length;
+      }
+      
+      // Set animation anchor point
+      statusModal.style.setProperty('--anchor-x', anchorX + '%');
+      statusModal.style.setProperty('--anchor-y', anchorY + '%');
+      statusModal.classList.add('modal-animate-from');
+      
+      // Show modal
+      statusModal.style.display = 'flex';
+      setTimeout(()=>{ if(statusModalClose) statusModalClose.focus(); }, 0);
+    });
+  }
+
+  // Save button functionality
+  const saveStatusBtn = document.getElementById('saveStatusBtn');
+  if(saveStatusBtn){
+    saveStatusBtn.addEventListener('click', function(){
+      if(!selectedStatus){
+        alert('Please select a status');
+        return;
+      }
+      const note = statusNote ? statusNote.value.substring(0,140) : '';
+      fetch('{% url "core:player_set_status" %}', {
+        method:'POST',
+        headers:{ 'Content-Type':'application/json', 'X-CSRFToken': (document.cookie.match(/csrftoken=([^;]+)/)||[])[1] },
+        body: JSON.stringify({ status: selectedStatus, note: note })
+      }).then(r=>r.json()).then(d=>{
+        if(!d.success){ 
+          alert(d.message||'Failed to update'); 
+          return; 
+        }
+        renderStatus(d);
+        statusModal.style.display = 'none';
+        statusModal.classList.remove('modal-animate-from');
+        selectedStatus = null;
+        statusOptions.forEach(opt => opt.classList.remove('selected'));
+      }).catch(()=> alert('Failed to update'));
+    });
+  }
+
+  // ESC key to close modal
+  document.addEventListener('keydown', function(e){
+    if(e.key === 'Escape' && statusModal && statusModal.style.display === 'flex'){
+      statusModal.style.display = 'none';
+      statusModal.classList.remove('modal-animate-from');
+      selectedStatus = null;
+      statusOptions.forEach(opt => opt.classList.remove('selected'));
+    }
+  });
+})();
+</script>
+
+

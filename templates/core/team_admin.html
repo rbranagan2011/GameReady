@@ -1,0 +1,173 @@
+{% extends 'base.html' %}
+{% block title %}Team Administration{% endblock %}
+
+{% block content %}
+<div class="container py-3">
+    <h2 class="mb-3">Team Administration</h2>
+    
+    <div class="mb-4">
+        <span class="text-muted">Team Name:</span>
+        <a href="#" class="text-primary text-decoration-none fw-semibold ms-2" data-bs-toggle="modal" data-bs-target="#renameTeamModal">
+            {{ team.name }}
+        </a>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-md-6">
+            <div class="card border-primary">
+                <div class="card-header bg-primary text-white fw-semibold">
+                    <i class="bi bi-share"></i> Share Team
+                </div>
+                <div class="card-body">
+                    <p class="mb-3">Share this code or link with players to let them join your team.</p>
+                    
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Team Code</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control font-monospace" id="teamCode" 
+                                   value="{{ team.join_code }}" readonly>
+                            <button class="btn btn-outline-secondary" type="button" onclick="copyToClipboard('teamCode', this)">
+                                <i class="bi bi-clipboard"></i> Copy
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Share Link</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control font-monospace small" id="shareLink" 
+                                   value="{{ request.scheme }}://{{ request.get_host }}{% url 'core:join_team_link' team.join_code %}" readonly>
+                            <button class="btn btn-outline-secondary" type="button" onclick="copyToClipboard('shareLink', this)">
+                                <i class="bi bi-clipboard"></i> Copy
+                            </button>
+                        </div>
+                        <small class="text-muted">Players can click this link to automatically join your team.</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header fw-semibold">Coaches</div>
+                <div class="card-body">
+                    {% if coaches %}
+                        <ul class="list-group list-group-flush">
+                            {% for u in coaches %}
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    <span>{{ u.get_full_name|default:u.username }}</span>
+                                    {% if coach_count > 1 %}
+                                    <form method="post" class="mb-0">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="action" value="remove_member">
+                                        <input type="hidden" name="user_id" value="{{ u.id }}">
+                                        <button class="btn btn-sm btn-outline-danger">Remove</button>
+                                    </form>
+                                    {% endif %}
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <div class="text-muted">No coaches assigned.</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header fw-semibold">Athletes</div>
+                <div class="card-body">
+                    {% if athletes %}
+                        <ul class="list-group list-group-flush">
+                            {% for u in athletes %}
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    <span>{{ u.get_full_name|default:u.username }}</span>
+                                    <form method="post" class="mb-0">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="action" value="remove_member">
+                                        <input type="hidden" name="user_id" value="{{ u.id }}">
+                                        <button class="btn btn-sm btn-outline-danger">Remove</button>
+                                    </form>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <div class="text-muted">No athletes assigned.</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12">
+            <div class="card border-danger">
+                <div class="card-header text-danger fw-semibold">Delete Team</div>
+                <div class="card-body">
+                    <p class="mb-2">This action is permanent. Type <strong>{{ team.name }}</strong> to confirm.</p>
+                    <form method="post" class="d-flex gap-2">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="delete_team">
+                        <input type="text" name="confirm" class="form-control" placeholder="{{ team.name }}">
+                        <button class="btn btn-danger">Delete Team</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Rename Team Modal -->
+<div class="modal fade" id="renameTeamModal" tabindex="-1" aria-labelledby="renameTeamModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="renameTeamModalLabel">Rename Team</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" id="renameTeamForm">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="rename">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="{{ name_form.name.id_for_label }}" class="form-label">Team Name</label>
+                        {{ name_form.name }}
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function copyToClipboard(elementId, button) {
+    const element = document.getElementById(elementId);
+    element.select();
+    element.setSelectionRange(0, 99999); // For mobile devices
+    
+    try {
+        navigator.clipboard.writeText(element.value);
+        const originalHtml = button.innerHTML;
+        button.innerHTML = '<i class="bi bi-check"></i> Copied!';
+        button.classList.add('btn-success');
+        button.classList.remove('btn-outline-secondary');
+        
+        setTimeout(() => {
+            button.innerHTML = originalHtml;
+            button.classList.remove('btn-success');
+            button.classList.add('btn-outline-secondary');
+        }, 2000);
+    } catch (err) {
+        // Fallback for older browsers
+        document.execCommand('copy');
+        alert('Copied to clipboard!');
+    }
+}
+
+</script>
+{% endblock %}
+
+

@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+
+{% block title %}Get Started - GameReady{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-5">
+            <div class="text-center mb-4">
+                <h2 class="mb-2">
+                    <i class="bi bi-person-check text-primary"></i> Join a Team
+                </h2>
+                <p class="text-muted">Enter your team code to get started</p>
+            </div>
+
+            <div class="card shadow">
+                <div class="card-body p-5">
+                    {% if has_join_code %}
+                    <div class="alert alert-info mb-4">
+                        <i class="bi bi-info-circle"></i> Team code pre-filled from link.
+                    </div>
+                    {% endif %}
+
+                    <form method="post" class="mb-4">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="join">
+                        <div class="mb-3">
+                            <label for="{{ join_form.join_code.id_for_label }}" class="form-label">Team Code</label>
+                            {{ join_form.join_code }}
+                            {% if join_form.join_code.errors %}
+                                <div class="text-danger small mt-2">{{ join_form.join_code.errors }}</div>
+                            {% elif join_form.join_code.help_text %}
+                                <div class="form-text">{{ join_form.join_code.help_text }}</div>
+                            {% endif %}
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-lg w-100">
+                            <i class="bi bi-check-lg"></i> Join Team
+                        </button>
+                    </form>
+
+                    <hr class="my-4">
+
+                    <div class="text-center">
+                        <h5 class="mb-3">Or</h5>
+                        <form method="post">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="individual">
+                            <button type="submit" class="btn btn-outline-secondary" disabled>
+                                <i class="bi bi-person"></i> Individual Mode
+                            </button>
+                            <small class="d-block text-muted mt-2">Coming soon</small>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

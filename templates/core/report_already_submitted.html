@@ -1,0 +1,103 @@
+{% extends 'base.html' %}
+
+{% block title %}Report Submitted - GameReady{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Hide top alert messages on this page */
+.container .alert { display: none; }
+
+/* Circular progress styles (aligned with Coach Dashboard, Whoop-like) */
+.readiness-circular-wrapper { display:flex; justify-content:center; margin: 1.75rem 0; }
+.circular-progress { position: relative; width: 240px; height: 240px; }
+.circular-progress svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.circular-progress .background-circle { fill: none; stroke: #e6e7eb; stroke-width: 14; }
+.circular-progress .progress-circle { fill: none; stroke-width: 14; stroke-linecap: round; transition: stroke-dasharray .7s ease-out; }
+.circular-progress .progress-circle.high-risk { stroke: #B71C1C; }
+.circular-progress .progress-circle.monitor { stroke: #FF8F00; }
+.circular-progress .progress-circle.good { stroke: #1B5E20; }
+.circular-progress .inner-disc { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width: 62%; height: 62%; border-radius: 50%; background: #fafafa; box-shadow: inset 0 2px 6px rgba(0,0,0,0.06); }
+.circular-progress .score-text { position:absolute; top:50%; left:50%; transform:translate(-50%,-52%); font-size: 3.2rem; font-weight: 800; color:#222; text-align:center; letter-spacing: -.2px; font-feature-settings: 'tnum' 1; }
+.circular-progress .score-sub { position:absolute; top:60%; left:50%; transform:translate(-50%,0); font-size: .95rem; color:#6c757d; font-weight:500; }
+
+/* Text blocks */
+.report-caption { font-size: 0.95rem; color:#6c757d; font-weight:600; letter-spacing:.2px; margin-bottom: .5rem; }
+.feedback-message { max-width: 36rem; margin-left:auto; margin-right:auto; }
+.feedback-message .lead { font-size: 1.05rem; line-height: 1.55; font-weight: 600; color:#1f2937; background:#f7f7f8; padding: 14px 16px; border-radius: 10px; border: 1px solid rgba(0,0,0,0.05); }
+.confirmation-message p { font-size: .95rem; }
+
+/* Responsive sizes */
+@media (min-width: 481px) {
+  .circular-progress { width: 280px; height: 280px; }
+  .circular-progress .score-text { font-size: 3.4rem; }
+}
+
+@media (min-width: 768px) {
+  .circular-progress { width: 320px; height: 320px; }
+  .circular-progress .score-text { font-size: 3.8rem; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-6 col-md-8">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-primary text-white text-center py-4">
+                <h3 class="card-title mb-0">
+                    <i class="bi bi-check-circle-fill me-2"></i>Report Submitted
+                </h3>
+            </div>
+            <div class="card-body text-center py-5">
+                <!-- Caption -->
+                <p class="report-caption" aria-live="polite">Recovery Level</p>
+                <!-- Readiness Circular (SVG) -->
+                <div class="readiness-circular-wrapper mb-4">
+                    <div class="circular-progress" data-score="{{ report.readiness_score }}">
+                        <svg viewBox="0 0 100 100" role="img" aria-label="Recovery level {{ report.readiness_score }} out of 100">
+                            <circle class="background-circle" cx="50" cy="50" r="42"></circle>
+                            <circle class="progress-circle {% if report.readiness_score < 40 %}high-risk{% elif report.readiness_score < 70 %}monitor{% else %}good{% endif %}"
+                                    cx="50" cy="50" r="42" stroke-dasharray="0 263.9" stroke-dashoffset="0"></circle>
+                        </svg>
+                        <div class="inner-disc" aria-hidden="true"></div>
+                        <div class="score-text">{{ report.readiness_score }}</div>
+                    </div>
+                </div>
+
+                <!-- Personalized Feedback Message -->
+                <div class="feedback-message mb-4">
+                    <p class="lead feedback-text" aria-live="polite">{{ report.get_personalized_feedback }}</p>
+                </div>
+
+                <!-- Confirmation Message -->
+                <div class="confirmation-message mb-4">
+                    <p class="text-muted">Your coach can now view today's report.</p>
+                </div>
+
+                <!-- Back to Dashboard Button -->
+                <div class="d-grid">
+                    <a href="{% url 'core:player_dashboard' %}" class="btn btn-primary btn-lg">
+                        <i class="bi bi-house me-2"></i>Back to Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const circleEl = document.querySelector('.circular-progress');
+    if (!circleEl) return;
+    const score = parseInt(circleEl.getAttribute('data-score')) || 0; // 0-100
+    const progressCircle = circleEl.querySelector('.progress-circle');
+    const radius = 42; // matches r attribute
+    const circumference = 2 * Math.PI * radius;
+    progressCircle.style.strokeDasharray = `0 ${circumference}`;
+    const progress = (score / 100) * circumference;
+    setTimeout(function() {
+        progressCircle.style.strokeDasharray = `${progress} ${circumference}`;
+    }, 100);
+});
+</script>
+{% endblock %}

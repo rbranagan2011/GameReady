@@ -1,0 +1,1103 @@
+{% extends 'base.html' %}
+{% load core_extras %}
+
+{% block title %}Schedule{% endblock %}
+
+{% block content %}
+<!-- Header removed per design; navbar provides navigation -->
+
+<div class="row">
+    <div class="col-md-8">
+        <div id="ts-month-container" class="fade-container">
+            {% include 'core/_team_schedule_month.html' %}
+        </div>
+    </div>
+    
+</div>
+
+<!-- Team Tags Management Section -->
+<div class="row mt-5">
+    <div class="col-12">
+        <div class="d-flex justify-content-start align-items-center mb-3">
+            <i class="bi bi-tags text-muted"></i>
+        </div>
+
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        {% if day_tags %}
+            <div class="tag-grid">
+                {% for tag in day_tags %}
+                    <div class="tag-bubble clickable"
+                         data-tag-id="{{ tag.id }}"
+                         data-tag-name="{{ tag.name }}"
+                         data-tag-target-min="{{ tag.target_min }}"
+                         data-tag-target-max="{{ tag.target_max }}"
+                         data-tag-color="{{ tag.color }}">
+                        <button type="button" class="delete-tag-btn delete-icon" title="Delete"
+                                data-tag-id="{{ tag.id }}" data-tag-name="{{ tag.name }}">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                        <div class="tag-bubble-header">
+                            <span class="color-dot" style="background-color: {{ tag.color }};"></span>
+                            <span class="tag-name">{{ tag.name }}</span>
+                        </div>
+                        <div class="tag-bubble-range">
+                            <div class="range-label">Target Range</div>
+                            <div class="range-value">{{ tag.target_min }}–{{ tag.target_max }}%</div>
+                        </div>
+                        <div class="tag-bubble-actions"></div>
+                    </div>
+                {% endfor %}
+                <!-- Add New Tag bubble -->
+                <div class="tag-bubble add-new clickable" id="addTagBubble">
+                    <div class="add-inner">
+                        <div class="add-plus">+</div>
+                        <div class="add-label">Add new tag</div>
+                    </div>
+                </div>
+            </div>
+        {% else %}
+            <div class="text-center py-5">
+                <i class="bi bi-tags fa-3x text-muted mb-3"></i>
+                <h4 class="text-muted">No Tags Yet</h4>
+                <p class="text-muted">Create your first team tag to get started with customizing your team's schedule.</p>
+                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createTagModal">
+                    <i class="bi bi-plus"></i> Create Your First Tag
+                </button>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Delete Tag Confirm Modal -->
+<div class="modal fade" id="deleteTagModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-exclamation-triangle text-danger"></i> Delete Tag</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-0">Are you sure you want to delete the tag <strong id="deleteTagName"></strong>?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteTagBtn">
+                    <i class="bi bi-trash"></i> Delete
+                </button>
+            </div>
+        </div>
+    </div>
+    </div>
+
+<!-- Day Selection Modal -->
+<div class="modal fade" id="dayModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-animate-from">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Set Day Type — <span id="modalWeekday"></span></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="list-group">
+                    {% for tag in day_tags %}
+                    <button type="button" class="list-group-item list-group-item-action day-tag-option" 
+                            data-tag="{{ tag.id }}" data-name="{{ tag.name }}" data-color="{{ tag.color }}" data-weekday="">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge" style="background-color: {{ tag.color }}; color:#fff;">{{ tag.name }}</span>
+                            <small class="text-muted">Range: {{ tag.target_min }}-{{ tag.target_max }}%</small>
+                        </div>
+                    </button>
+                    {% endfor %}
+                    <button type="button" class="list-group-item list-group-item-action day-tag-option" 
+                            data-tag="" data-name="" data-color="" data-weekday="">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge bg-secondary">Clear Tag</span>
+                        </div>
+                    </button>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Tag Modal -->
+<div class="modal fade" id="editTagModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-animate-from">
+        <div class="modal-content">
+            <div class="modal-header py-2">
+                <span class="text-muted small ms-1">Edit tag</span>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editTagForm" method="post">
+                    {% csrf_token %}
+                    <input type="hidden" id="editTagId" name="tag_id" value="">
+                    
+                    <div class="mb-3">
+                        <label for="editTagName" class="form-label visually-hidden">Tag Name</label>
+                        <input type="text" class="form-control" id="editTagName" name="name" 
+                               placeholder="Tag name" required>
+                        <div id="editTagNameError" class="text-danger" style="display: none;"></div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label visually-hidden">Target Range (%)</label>
+                        <div class="row">
+                            <div class="col-6">
+                                <div class="input-group">
+                                    <input type="number" class="form-control" id="editTagTargetMin" name="target_min" 
+                                           min="0" max="100" placeholder="Min" required>
+                                </div>
+                                <div id="editTagTargetMinError" class="text-danger" style="display: none;"></div>
+                            </div>
+                            <div class="col-6">
+                                <div class="input-group">
+                                    <input type="number" class="form-control" id="editTagTargetMax" name="target_max" 
+                                           min="0" max="100" placeholder="Max" required>
+                                </div>
+                                <div id="editTagTargetMaxError" class="text-danger" style="display: none;"></div>
+                            </div>
+                        </div>
+                        <div class="form-text">Set the acceptable readiness range (0–100%).</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label visually-hidden">Color</label>
+                        <input type="hidden" id="editTagColorValue" name="color" value="#0d6efd">
+                        <div class="color-swatch-grid" id="editColorSwatches">
+                            <button type="button" class="color-swatch" data-color="#0d6efd" style="background:#0d6efd"></button>
+                            <button type="button" class="color-swatch" data-color="#dc3545" style="background:#dc3545"></button>
+                            <button type="button" class="color-swatch" data-color="#198754" style="background:#198754"></button>
+                            <button type="button" class="color-swatch" data-color="#6f42c1" style="background:#6f42c1"></button>
+                            <button type="button" class="color-swatch" data-color="#fd7e14" style="background:#fd7e14"></button>
+                            <button type="button" class="color-swatch" data-color="#20c997" style="background:#20c997"></button>
+                        </div>
+                        <div class="form-text">Pick a tag color.</div>
+                        <div id="editTagColorError" class="text-danger" style="display: none;"></div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="saveEditTag">
+                    <i class="bi bi-check"></i> Save Changes
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Create Tag Modal -->
+<div class="modal fade" id="createTagModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-animate-from">
+        <div class="modal-content">
+            <div class="modal-header py-2">
+                <span class="text-muted small ms-1">Create tag</span>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="createTagForm" method="post">
+                    {% csrf_token %}
+                    
+                    <div class="mb-3">
+                        <label for="createTagName" class="form-label visually-hidden">Tag Name</label>
+                        <input type="text" class="form-control" id="createTagName" name="name" 
+                               placeholder="Tag name" required>
+                        <div id="createTagNameError" class="text-danger" style="display: none;"></div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label visually-hidden">Target Range (%)</label>
+                        <div class="row">
+                            <div class="col-6">
+                                <div class="input-group">
+                                    <input type="number" class="form-control" id="createTagTargetMin" name="target_min" 
+                                           min="0" max="100" value="60" placeholder="Min" required>
+                                </div>
+                                <div id="createTagTargetMinError" class="text-danger" style="display: none;"></div>
+                            </div>
+                            <div class="col-6">
+                                <div class="input-group">
+                                    <input type="number" class="form-control" id="createTagTargetMax" name="target_max" 
+                                           min="0" max="100" value="80" placeholder="Max" required>
+                                </div>
+                                <div id="createTagTargetMaxError" class="text-danger" style="display: none;"></div>
+                            </div>
+                        </div>
+                        <div class="form-text">Set the acceptable readiness range for this tag (0-100%).</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label visually-hidden">Color</label>
+                        <input type="hidden" id="createTagColorValue" name="color" value="#007bff">
+                        <div class="color-swatch-grid" id="createColorSwatches">
+                            <button type="button" class="color-swatch" data-color="#0d6efd" style="background:#0d6efd"></button>
+                            <button type="button" class="color-swatch" data-color="#dc3545" style="background:#dc3545"></button>
+                            <button type="button" class="color-swatch" data-color="#198754" style="background:#198754"></button>
+                            <button type="button" class="color-swatch" data-color="#6f42c1" style="background:#6f42c1"></button>
+                            <button type="button" class="color-swatch" data-color="#fd7e14" style="background:#fd7e14"></button>
+                            <button type="button" class="color-swatch" data-color="#20c997" style="background:#20c997"></button>
+                        </div>
+                        <div class="form-text">Pick a tag color.</div>
+                        <div id="createTagColorError" class="text-danger" style="display: none;"></div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="saveCreateTag">
+                    <i class="bi bi-check"></i> Create Tag
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.date-nav { display:flex; justify-content:center; width:100%; margin-bottom: 10px; }
+.date-picker { display:flex; align-items:center; background:#ffffff; border:2px solid #e0e0e0; border-radius:50px; padding:6px 12px; box-shadow:0 2px 8px rgba(0,0,0,0.1); transition: all 0.3s ease; max-width: 320px; width: 100%; position: relative; }
+.date-picker:hover { border-color:#007bff; box-shadow:0 4px 12px rgba(0,123,255,0.15); transform: translateY(-1px); }
+.date-picker:focus-within { border-color:#007bff; box-shadow:0 0 0 3px rgba(0,123,255,0.1); }
+.date-btn { background:none; border:none; padding:10px; cursor:pointer; border-radius:50%; display:flex; align-items:center; justify-content:center; transition: all 0.2s ease; color:#666; font-size:16px; min-width:40px; min-height:40px; }
+.date-btn:hover { background:#f8f9fa; color:#007bff; transform: scale(1.1); }
+.date-label { font-size:16px; font-weight:600; color:#333; text-align:center; flex:1; padding:0 12px; white-space:nowrap; }
+.fade-container { transition: opacity .2s ease; }
+.calendar-grid {
+    border: 1px solid #dee2e6;
+    border-radius: 0.375rem;
+    overflow: hidden;
+}
+
+.calendar-header {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+    padding: 0.5rem 0;
+    display: flex;
+    flex-wrap: nowrap;      /* keep weekday labels on one line */
+}
+
+.calendar-week {
+    border-bottom: 1px solid #dee2e6;
+    display: flex;            /* keep a single row */
+    flex-wrap: nowrap;        /* prevent wrapping within a week */
+}
+
+.calendar-week:last-child {
+    border-bottom: none;
+}
+
+.calendar-day {
+    min-height: 80px;
+    padding: 0.5rem;
+    border-right: 1px solid #dee2e6;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    flex: 0 0 14.2857%;       /* 7 equal columns */
+    max-width: 14.2857%;
+}
+
+.calendar-day:last-child {
+    border-right: none;
+}
+
+.calendar-day:hover {
+    background-color: #f8f9fa;
+}
+
+.calendar-day-other {
+    background-color: #f8f9fa;
+    cursor: default;
+}
+
+.calendar-day-today {
+    background-color: #e3f2fd;
+    border: 2px solid #2196f3;
+}
+
+.day-number {
+    font-weight: bold;
+    font-size: 0.8rem;
+    margin-bottom: 0.25rem;
+}
+
+.day-tag {
+    font-size: 0.7rem;
+}
+
+.day-tag .badge {
+    opacity: 0.7;
+    font-size: 0.65rem;
+    padding: 0.25rem 0.4rem;
+}
+
+.day-tag-option:hover {
+    background-color: #f8f9fa;
+}
+
+.day-tag-option.active {
+    background-color: #e3f2fd;
+    border-color: #2196f3;
+}
+
+/* Small circular readiness indicator shown in calendar cells */
+/* Replace filled circles with ring-style progress (like coach dashboard) */
+.ts-progress { position: relative; width: 28px; height: 28px; }
+.ts-progress svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.ts-progress .background-circle { fill: none; stroke: #e0e0e0; stroke-width: 6; }
+.ts-progress .progress-circle { fill: none; stroke-width: 6; stroke-linecap: round; transition: stroke-dasharray .6s ease; }
+.ts-progress .score-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 10px; font-weight: 700; color: #333; line-height: 1; }
+/* Dynamic colors to mirror coach dashboard rules */
+.ts-progress .progress-circle.in-range { stroke: #1B5E20; }
+.ts-progress .progress-circle.below { stroke: #FF8F00; }
+.ts-progress .progress-circle.above { stroke: #0d6efd; }
+.ts-progress .progress-circle.neutral { stroke: #9E9E9E; }
+
+/* Mobile optimizations */
+@media (max-width: 576px) {
+  .calendar-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .calendar-grid { min-width: 680px; }
+  .calendar-day { min-height: 64px; padding: 0.35rem; }
+  .day-number { font-size: 0.7rem; }
+  .day-tag .badge { font-size: 0.6rem; padding: 0.18rem 0.35rem; }
+  .score-circle { width: 22px; height: 22px; font-size: 0.65rem; }
+}
+</style>
+
+<script>
+// Smooth month navigation for Team Schedule
+document.addEventListener('DOMContentLoaded', function(){
+  function bindTsMonthNav(){
+    document.querySelectorAll('.js-ts-month').forEach(function(a){
+      a.addEventListener('click', function(e){
+        e.preventDefault();
+        const month = this.getAttribute('data-month');
+        const container = document.getElementById('ts-month-container');
+        container.style.opacity = 0.4;
+        fetch('{% url "core:team_schedule_month_partial" %}?month=' + month)
+          .then(r=>r.json())
+          .then(data=>{
+            if(!data.success) return;
+            container.innerHTML = data.html;
+            container.style.opacity = 1;
+            bindTsMonthNav();
+            initTsProgress(container);
+            const url = new URL(window.location);
+            url.searchParams.set('month', month);
+            window.history.pushState({}, '', url);
+          })
+          .catch(()=>{ container.style.opacity = 1; });
+      });
+    });
+  }
+  bindTsMonthNav();
+  // Initialize progress rings on first load
+  initTsProgress(document);
+});
+// Initialize ring progress for schedule calendar
+function initTsProgress(root){
+  try {
+    const nodes = (root || document).querySelectorAll('.ts-progress');
+    nodes.forEach(function(el, idx){
+      const score = parseInt(el.getAttribute('data-score')) || 0;
+      const circle = el.querySelector('.progress-circle');
+      if (!circle) return;
+      const radius = 35; // matches r in SVG
+      const circumference = 2 * Math.PI * radius; // ≈ 219.9
+      const dash = Math.max(0, Math.min(100, score)) / 100 * circumference;
+      // Start from zero for a subtle pop-in
+      circle.style.strokeDasharray = `0 ${circumference}`;
+      setTimeout(function(){ circle.style.strokeDasharray = `${dash} ${circumference}`; }, idx * 40);
+    });
+  } catch(e) { /* no-op */ }
+}
+let currentDate = '';
+let currentWeekday = '';
+let deleteTagModalInstance = null;
+let deleteTagId = null;
+let suppressNextClick = false;
+
+function openDayModal(evt, dateStr, weekday, currentTag) {
+    currentDate = dateStr;
+    currentWeekday = weekday;
+    // Display compact date label like "Thu 21"
+    const dayNum = parseInt((dateStr || '').split('-')[2], 10);
+    const compact = isNaN(dayNum) ? weekday : `${weekday} ${dayNum}`;
+    document.getElementById('modalWeekday').textContent = compact;
+    
+    // Update all day tag options with the current date
+    document.querySelectorAll('.day-tag-option').forEach(option => {
+        option.dataset.date = dateStr;
+        
+        // Remove active class from all options
+        option.classList.remove('active');
+        
+        // Add active class to current tag
+        if (option.dataset.tag === currentTag) {
+            option.classList.add('active');
+        }
+    });
+    
+    // Anchor animation to click location
+    try {
+        const dlg = document.querySelector('#dayModal .modal-dialog');
+        if (dlg && evt) {
+            const xPct = (evt.clientX / window.innerWidth) * 100;
+            const yPct = (evt.clientY / window.innerHeight) * 100;
+            dlg.style.setProperty('--anchor-x', xPct + '%');
+            dlg.style.setProperty('--anchor-y', yPct + '%');
+        }
+    } catch(e) {}
+
+    // Show the modal
+    const modal = new bootstrap.Modal(document.getElementById('dayModal'));
+    modal.show();
+}
+
+// Handle day tag selection
+document.querySelectorAll('.day-tag-option').forEach(option => {
+    option.addEventListener('click', function() {
+        const tag = this.dataset.tag;
+        const tagName = this.dataset.name;
+        const tagColor = this.dataset.color;
+        const date = this.dataset.date;
+        
+        // Update the schedule via AJAX
+        fetch('{% url "core:team_schedule_settings" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: JSON.stringify({
+                date: date,
+                day_tag: tag
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Update the calendar display
+                updateCalendarDay(date, tag, tagName, tagColor);
+                
+                // Close the modal
+                bootstrap.Modal.getInstance(document.getElementById('dayModal')).hide();
+                
+                // Show success message
+                showToast('Schedule updated successfully!', 'success');
+            } else {
+                showToast('Error updating schedule: ' + data.message, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showToast('Error updating schedule', 'error');
+        });
+    });
+});
+
+function updateCalendarDay(dateStr, tagId, tagName, tagColor) {
+    // Update the specific calendar day
+    const dayElement = document.querySelector(`[data-date="${dateStr}"]`);
+    if (dayElement) {
+        const dayTagElement = dayElement.querySelector('.day-tag');
+        if (tagId) {
+            dayTagElement.innerHTML = `<span class="badge" style="background-color:${tagColor}; color:#fff;">${tagName}</span>`;
+        } else {
+            dayTagElement.innerHTML = `<span class="badge bg-light text-dark">—</span>`;
+        }
+        dayElement.dataset.currentTag = tagId;
+    }
+}
+
+function copyLastMonth() {
+    // Determine current month from header (YYYY-MM); fallback to today
+    const monthAttr = document.querySelector('#ts-month-container .date-label');
+    const monthParam = new URLSearchParams(window.location.search).get('month') ||
+        (function(){
+            const d = new Date();
+            return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+        })();
+    fetch('{% url "core:team_schedule_settings" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        },
+        body: JSON.stringify({ action: 'copy_last_month', month: monthParam })
+    }).then(r=>r.json()).then(data=>{
+        if(data.success){ location.reload(); } else { showToast(data.message||'Failed', 'error'); }
+    }).catch(()=> showToast('Error copying month', 'error'));
+}
+
+function clearCurrentMonth() {
+    const monthParam = new URLSearchParams(window.location.search).get('month') ||
+        (function(){ const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; })();
+    if(!confirm('Clear all tags for this month?')) return;
+    fetch('{% url "core:team_schedule_settings" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        },
+        body: JSON.stringify({ action: 'clear_month', month: monthParam })
+    }).then(r=>r.json()).then(data=>{
+        if(data.success){ location.reload(); } else { showToast(data.message||'Failed', 'error'); }
+    }).catch(()=> showToast('Error clearing month', 'error'));
+}
+
+function showToast(message, type) {
+    // Create a simple toast notification
+    const toast = document.createElement('div');
+    toast.className = `alert alert-${type === 'success' ? 'success' : 'danger'} alert-dismissible fade show position-fixed`;
+    toast.style.top = '20px';
+    toast.style.right = '20px';
+    toast.style.zIndex = '9999';
+    toast.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.body.appendChild(toast);
+    
+    // Auto-remove after 3 seconds
+    setTimeout(() => {
+        if (toast.parentNode) {
+            toast.parentNode.removeChild(toast);
+        }
+    }, 3000);
+}
+
+// Tag Management Modal Functions
+document.addEventListener('DOMContentLoaded', function() {
+    // Edit Tag Modal
+    const editTagModal = new bootstrap.Modal(document.getElementById('editTagModal'));
+    const createTagModal = new bootstrap.Modal(document.getElementById('createTagModal'));
+    deleteTagModalInstance = new bootstrap.Modal(document.getElementById('deleteTagModal'));
+
+    // After any modal closes, suppress the very next document click to prevent click-through navigation
+    ['editTagModal','createTagModal','deleteTagModal','dayModal'].forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener('hidden.bs.modal', function(){
+            suppressNextClick = true;
+            setTimeout(()=>{ suppressNextClick = false; }, 200);
+        });
+    });
+    // Global capture-phase guard to swallow one click after modal hides
+    document.addEventListener('click', function(e){
+        if (suppressNextClick) {
+            e.preventDefault();
+            e.stopPropagation();
+            suppressNextClick = false;
+        }
+    }, true);
+    
+    function openEditTagModalFromData(el, clickEvent) {
+        const tagId = el.dataset.tagId;
+        const tagName = el.dataset.tagName;
+        const tagTargetMin = el.dataset.tagTargetMin;
+        const tagTargetMax = el.dataset.tagTargetMax;
+        const tagColor = el.dataset.tagColor;
+
+        document.getElementById('editTagId').value = tagId;
+        document.getElementById('editTagName').value = tagName;
+        document.getElementById('editTagTargetMin').value = tagTargetMin;
+        document.getElementById('editTagTargetMax').value = tagTargetMax;
+        const editColorInput = document.getElementById('editTagColorValue');
+        if (editColorInput) {
+            editColorInput.value = tagColor;
+            // mark active swatch
+            const swatches = document.getElementById('editColorSwatches');
+            if (swatches) {
+                swatches.querySelectorAll('.color-swatch').forEach(s=>{
+                    s.classList.toggle('active', s.dataset.color === tagColor);
+                });
+            }
+        }
+
+        clearEditTagErrors();
+        // Set transform origin to click position (percentages of viewport)
+        try {
+            const dlg = document.querySelector('#editTagModal .modal-dialog');
+            if (dlg && clickEvent) {
+                const xPct = (clickEvent.clientX / window.innerWidth) * 100;
+                const yPct = (clickEvent.clientY / window.innerHeight) * 100;
+                dlg.style.setProperty('--anchor-x', xPct + '%');
+                dlg.style.setProperty('--anchor-y', yPct + '%');
+            }
+        } catch (e) {}
+        editTagModal.show();
+    }
+
+    // Make entire tag bubble clickable for edit (exclude the add-new bubble)
+    document.querySelectorAll('.tag-bubble.clickable').forEach(bubble => {
+        bubble.addEventListener('click', function(e){
+            if (this.classList.contains('add-new')) return; // add bubble opens create only
+            // ignore clicks on the delete button inside the bubble
+            if (e.target.closest('.delete-tag-btn')) return;
+            // small pop animation then open
+            this.classList.add('pop');
+            setTimeout(()=>{ this.classList.remove('pop'); }, 150);
+            openEditTagModalFromData(this, e);
+        });
+    });
+    
+    function openCreateModalWithAnchor(e){
+        // Clear the create form
+        const form = document.getElementById('createTagForm');
+        form.reset();
+        const defaultColor = '#0d6efd';
+        const colorInput = document.getElementById('createTagColorValue');
+        if (colorInput) {
+            colorInput.value = defaultColor;
+        }
+        const swatches = document.getElementById('createColorSwatches');
+        if (swatches) {
+            swatches.querySelectorAll('.color-swatch').forEach(s=>{
+                s.classList.toggle('active', s.dataset.color === defaultColor);
+            });
+        }
+        // Clear any previous errors
+        clearCreateTagErrors();
+        // Set anchor for animation
+        try {
+            const dlg = document.querySelector('#createTagModal .modal-dialog');
+            if (dlg && e) {
+                const xPct = (e.clientX / window.innerWidth) * 100;
+                const yPct = (e.clientY / window.innerHeight) * 100;
+                dlg.style.setProperty('--anchor-x', xPct + '%');
+                dlg.style.setProperty('--anchor-y', yPct + '%');
+            }
+        } catch(err) {}
+        // Show the modal
+        createTagModal.show();
+    }
+
+    // Wire any explicit triggers
+    document.querySelectorAll('[data-bs-target="#createTagModal"]').forEach(button => {
+        button.addEventListener('click', openCreateModalWithAnchor);
+    });
+    // Wire the add bubble
+    const addBubble = document.getElementById('addTagBubble');
+    if (addBubble) {
+        addBubble.addEventListener('click', openCreateModalWithAnchor);
+    }
+    
+    // Handle Delete Tag button clicks
+    document.querySelectorAll('.delete-tag-btn').forEach(button => {
+        button.addEventListener('click', function(e) {
+            deleteTagId = this.dataset.tagId;
+            const tagName = this.dataset.tagName;
+            document.getElementById('deleteTagName').textContent = tagName;
+            try {
+                const dlg = document.querySelector('#deleteTagModal .modal-dialog');
+                if (dlg && e) {
+                    const xPct = (e.clientX / window.innerWidth) * 100;
+                    const yPct = (e.clientY / window.innerHeight) * 100;
+                    dlg.style.setProperty('--anchor-x', xPct + '%');
+                    dlg.style.setProperty('--anchor-y', yPct + '%');
+                }
+            } catch(err) {}
+            deleteTagModalInstance.show();
+        });
+    });
+
+    // Confirm delete
+    document.getElementById('confirmDeleteTagBtn').addEventListener('click', function() {
+        if (!deleteTagId) return;
+        fetch('{% url "core:team_tag_delete" 0 %}'.replace('0', deleteTagId), {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                deleteTagModalInstance.hide();
+                showToast('Tag deleted successfully', 'success');
+                // Refresh to update tags and schedule options
+                setTimeout(() => location.reload(), 600);
+            } else {
+                showToast(data.message || 'Failed to delete tag', 'error');
+            }
+        })
+        .catch(() => showToast('Error deleting tag', 'error'));
+    });
+
+    // Color swatch handlers (edit/create)
+    function bindColorSwatches(containerId, inputId) {
+        const container = document.getElementById(containerId);
+        const input = document.getElementById(inputId);
+        if (!container || !input) return;
+        function setActive(color) {
+            input.value = color;
+            container.querySelectorAll('.color-swatch').forEach(s=>{
+                s.classList.toggle('active', s.dataset.color === color);
+            });
+        }
+        // initialize active based on input value
+        setActive(input.value);
+        container.querySelectorAll('.color-swatch').forEach(swatch => {
+            swatch.addEventListener('click', function() {
+                setActive(this.dataset.color);
+            });
+        });
+    }
+    bindColorSwatches('editColorSwatches', 'editTagColorValue');
+    bindColorSwatches('createColorSwatches', 'createTagColorValue');
+    
+    // Handle Edit Tag form submission
+    document.getElementById('saveEditTag').addEventListener('click', function() {
+        const form = document.getElementById('editTagForm');
+        const formData = new FormData(form);
+        
+        // Clear previous errors
+        clearEditTagErrors();
+        
+        // Validate form
+        if (!validateEditTagForm()) {
+            return;
+        }
+        
+        // Submit via AJAX
+        fetch('{% url "core:team_tag_edit" 0 %}'.replace('0', formData.get('tag_id')), {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                editTagModal.hide();
+                showToast('Tag updated successfully!', 'success');
+                // Reload the page to show updated tags
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                showEditTagErrors(data.errors || {});
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showToast('Error updating tag', 'error');
+        });
+    });
+    
+    // Handle Create Tag form submission
+    document.getElementById('saveCreateTag').addEventListener('click', function() {
+        const form = document.getElementById('createTagForm');
+        const formData = new FormData(form);
+        
+        // Clear previous errors
+        clearCreateTagErrors();
+        
+        // Validate form
+        if (!validateCreateTagForm()) {
+            return;
+        }
+        
+        // Submit via AJAX
+        fetch('{% url "core:team_tag_create" %}', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                createTagModal.hide();
+                showToast('Tag created successfully!', 'success');
+                // Reload the page to show new tag
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                showCreateTagErrors(data.errors || {});
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showToast('Error creating tag', 'error');
+        });
+    });
+    
+    function validateEditTagForm() {
+        const name = document.getElementById('editTagName').value.trim();
+        const targetMin = parseInt(document.getElementById('editTagTargetMin').value);
+        const targetMax = parseInt(document.getElementById('editTagTargetMax').value);
+        
+        if (!name) {
+            showEditTagError('editTagName', 'Tag name is required');
+            return false;
+        }
+        
+        if (isNaN(targetMin) || targetMin < 0 || targetMin > 100) {
+            showEditTagError('editTagTargetMin', 'Minimum target must be between 0 and 100');
+            return false;
+        }
+        
+        if (isNaN(targetMax) || targetMax < 0 || targetMax > 100) {
+            showEditTagError('editTagTargetMax', 'Maximum target must be between 0 and 100');
+            return false;
+        }
+        
+        if (targetMin > targetMax) {
+            showEditTagError('editTagTargetMin', 'Minimum target cannot be greater than maximum target');
+            return false;
+        }
+        
+        return true;
+    }
+    
+    function validateCreateTagForm() {
+        const name = document.getElementById('createTagName').value.trim();
+        const targetMin = parseInt(document.getElementById('createTagTargetMin').value);
+        const targetMax = parseInt(document.getElementById('createTagTargetMax').value);
+        
+        if (!name) {
+            showCreateTagError('createTagName', 'Tag name is required');
+            return false;
+        }
+        
+        if (isNaN(targetMin) || targetMin < 0 || targetMin > 100) {
+            showCreateTagError('createTagTargetMin', 'Minimum target must be between 0 and 100');
+            return false;
+        }
+        
+        if (isNaN(targetMax) || targetMax < 0 || targetMax > 100) {
+            showCreateTagError('createTagTargetMax', 'Maximum target must be between 0 and 100');
+            return false;
+        }
+        
+        if (targetMin > targetMax) {
+            showCreateTagError('createTagTargetMin', 'Minimum target cannot be greater than maximum target');
+            return false;
+        }
+        
+        return true;
+    }
+    
+    function showEditTagError(field, message) {
+        const errorElement = document.getElementById(field + 'Error');
+        errorElement.textContent = message;
+        errorElement.style.display = 'block';
+    }
+    
+    function showCreateTagError(field, message) {
+        const errorElement = document.getElementById(field + 'Error');
+        errorElement.textContent = message;
+        errorElement.style.display = 'block';
+    }
+    
+    function clearEditTagErrors() {
+        ['editTagName', 'editTagTargetMin', 'editTagTargetMax', 'editTagColor'].forEach(field => {
+            const errorElement = document.getElementById(field + 'Error');
+            errorElement.style.display = 'none';
+            errorElement.textContent = '';
+        });
+    }
+    
+    function clearCreateTagErrors() {
+        ['createTagName', 'createTagTargetMin', 'createTagTargetMax', 'createTagColor'].forEach(field => {
+            const errorElement = document.getElementById(field + 'Error');
+            errorElement.style.display = 'none';
+            errorElement.textContent = '';
+        });
+    }
+    
+    function showEditTagErrors(errors) {
+        Object.keys(errors).forEach(field => {
+            showEditTagError('editTag' + field.charAt(0).toUpperCase() + field.slice(1), errors[field][0]);
+        });
+    }
+    
+    function showCreateTagErrors(errors) {
+        Object.keys(errors).forEach(field => {
+            showCreateTagError('createTag' + field.charAt(0).toUpperCase() + field.slice(1), errors[field][0]);
+        });
+    }
+});
+</script>
+
+<style>
+.tag-color-preview {
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.card {
+    transition: transform 0.2s ease-in-out;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.progress {
+    background-color: #e9ecef;
+}
+</style>
+
+<style>
+/* Tag bubbles grid to mirror coach dashboard summary bubbles (two per row on desktop) */
+.tag-grid {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: 1fr 1fr; /* two per row by default */
+}
+/* Keep two per row for larger phones like iPhone 14 Pro Max (≈430px). 
+   Only collapse to 1 column on very narrow screens. */
+@media (max-width: 399.98px) {
+    .tag-grid { grid-template-columns: 1fr; }
+}
+
+.tag-bubble {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 12px 14px;
+    transition: transform 0.15s ease, box-shadow 0.2s ease;
+    position: relative;
+}
+.tag-bubble.clickable { cursor: pointer; }
+.tag-bubble.clickable:hover { transform: translateY(-1px); box-shadow: 0 4px 10px rgba(0,0,0,0.06); }
+.tag-bubble.clickable.pop { transform: scale(0.98); box-shadow: 0 6px 14px rgba(0,0,0,0.08); }
+.tag-bubble-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+}
+.color-dot {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 2px solid #dee2e6;
+}
+.tag-name {
+    font-weight: 700;
+    font-size: 16px;
+}
+.tag-bubble-range {
+    text-align: center;
+}
+.tag-bubble-range .range-label {
+    font-size: 12px;
+    color: #6b7280;
+    margin-bottom: 4px;
+}
+.tag-bubble-range .range-value {
+    font-size: 18px;
+    font-weight: 800;
+    color: #1B5E20;
+    margin-bottom: 6px;
+}
+.range-bar {
+    position: relative;
+    height: 8px;
+    background: #e9ecef;
+    border-radius: 6px;
+    overflow: hidden;
+}
+.range-bar .range-max {
+    height: 100%;
+    opacity: 0.3; /* background span up to max */
+}
+.range-bar .range-min {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+}
+.tag-bubble-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+    justify-content: center;
+}
+
+/* Small delete icon in top-right */
+.delete-icon {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    border: none;
+    background: transparent;
+    color: #dc3545;
+    padding: 4px;
+    line-height: 1;
+    border-radius: 6px;
+}
+.delete-icon:hover { background: rgba(220,53,69,0.08); }
+.delete-icon i { font-size: 16px; }
+
+/* Color swatch grid */
+.color-swatch-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 28px);
+    gap: 8px;
+}
+.color-swatch {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    border: 2px solid #e5e7eb;
+}
+.color-swatch.active { outline: 2px solid #111827; outline-offset: 1px; }
+
+/* Animate modal from click position (transform-origin is set via JS as CSS variables) */
+.modal-animate-from .modal-content {
+    transform-origin: var(--anchor-x, 50%) var(--anchor-y, 50%);
+}
+
+/* Add new tag bubble styles */
+.tag-bubble.add-new {
+    background: rgba(13,110,253,0.04);
+    border: 1px dashed #cfe2ff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+}
+.tag-bubble.add-new .add-inner { padding: 10px; }
+.tag-bubble.add-new .add-plus {
+    font-size: 22px;
+    font-weight: 700;
+    color: #0d6efd;
+    line-height: 1;
+}
+.tag-bubble.add-new .add-label {
+    font-size: 12px;
+    color: #0d6efd;
+    opacity: 0.9;
+}
+
+/* Prevent accidental re-open on backdrop click by disabling underlying grid clicks while a modal is open */
+body.modal-open .tag-grid, 
+body.modal-open .calendar-grid {
+    pointer-events: none;
+}
+</style>
+
+<!-- Add CSRF token for AJAX requests -->
+{% csrf_token %}
+{% endblock %}

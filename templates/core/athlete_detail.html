@@ -1,0 +1,160 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ athlete.get_full_name|default:athlete.username }} - Athlete Details{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-person"></i> {{ athlete.get_full_name|default:athlete.username }}</h2>
+    <a href="{% url 'core:coach_dashboard' %}" class="btn btn-outline-primary">
+        <i class="bi bi-arrow-left"></i> Back to Dashboard
+    </a>
+</div>
+
+{% if metric_averages %}
+<!-- Average Metrics -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="bi bi-graph-up"></i> 30-Day Averages</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3 col-6 mb-3">
+                        <div class="text-center">
+                            <div class="h4 text-primary">{{ metric_averages.sleep_quality }}</div>
+                            <small class="text-muted">Sleep Quality</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-6 mb-3">
+                        <div class="text-center">
+                            <div class="h4 text-warning">{{ metric_averages.energy_fatigue }}</div>
+                            <small class="text-muted">Energy/Fatigue</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-6 mb-3">
+                        <div class="text-center">
+                            <div class="h4 text-danger">{{ metric_averages.muscle_soreness }}</div>
+                            <small class="text-muted">Muscle Soreness</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-6 mb-3">
+                        <div class="text-center">
+                            <div class="h4 text-success">{{ metric_averages.mood_stress }}</div>
+                            <small class="text-muted">Mood/Stress</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-6 mb-3">
+                        <div class="text-center">
+                            <div class="h4 text-info">{{ metric_averages.motivation }}</div>
+                            <small class="text-muted">Motivation</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-6 mb-3">
+                        <div class="text-center">
+                            <div class="h4 text-warning">{{ metric_averages.nutrition_quality }}</div>
+                            <small class="text-muted">Nutrition</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-6 mb-3">
+                        <div class="text-center">
+                            <div class="h4 text-primary">{{ metric_averages.hydration }}</div>
+                            <small class="text-muted">Hydration</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-6 mb-3">
+                        <div class="text-center">
+                            <div class="h4 
+                                {% if metric_averages.readiness_score >= 80 %}text-success
+                                {% elif metric_averages.readiness_score >= 60 %}text-warning
+                                {% else %}text-danger{% endif %}">
+                                {{ metric_averages.readiness_score }}%
+                            </div>
+                            <small class="text-muted">Avg Readiness</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Recent Reports -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="bi bi-calendar-check"></i> Recent Reports (Last 30 Days)</h5>
+            </div>
+            <div class="card-body">
+                {% if reports %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Readiness</th>
+                                <th>Sleep</th>
+                                <th>Energy</th>
+                                <th>Soreness</th>
+                                <th>Mood</th>
+                                <th>Motivation</th>
+                                <th>Nutrition</th>
+                                <th>Hydration</th>
+                                <th>Comments</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for report in reports %}
+                            <tr>
+                                <td>
+                                    <strong>{{ report.date_created|date:"M j" }}</strong><br>
+                                    <small class="text-muted">{{ report.date_created|date:"D" }}</small>
+                                </td>
+                                <td>
+                                    <span class="badge fs-6 
+                                        {% if report.readiness_score >= 80 %}bg-success
+                                        {% elif report.readiness_score >= 60 %}bg-warning
+                                        {% else %}bg-danger{% endif %}">
+                                        {{ report.readiness_score }}%
+                                    </span>
+                                </td>
+                                <td>{{ report.sleep_quality }}</td>
+                                <td>{{ report.energy_fatigue }}</td>
+                                <td>{{ report.muscle_soreness }}</td>
+                                <td>{{ report.mood_stress }}</td>
+                                <td>{{ report.motivation }}</td>
+                                <td>{{ report.nutrition_quality }}</td>
+                                <td>{{ report.hydration }}</td>
+                                <td>
+                                    {% if report.comments %}
+                                        <button class="btn btn-sm btn-outline-info" type="button" data-bs-toggle="collapse" data-bs-target="#comments{{ report.id }}">
+                                            <i class="bi bi-chat-text"></i>
+                                        </button>
+                                        <div class="collapse mt-2" id="comments{{ report.id }}">
+                                            <div class="card card-body small">
+                                                {{ report.comments }}
+                                            </div>
+                                        </div>
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-4">
+                    <i class="bi bi-calendar-x text-muted" style="font-size: 3rem;"></i>
+                    <h5 class="text-muted mt-3">No Reports Found</h5>
+                    <p class="text-muted">This athlete hasn't submitted any reports in the last 30 days.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

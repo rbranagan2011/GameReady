@@ -1,0 +1,128 @@
+{% extends 'base.html' %}
+
+{% block title %}Get Started - Step 2{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-10 col-lg-8">
+            <!-- Progress Indicator -->
+            <div class="text-center mb-4">
+                <div class="progress mb-2" style="height: 8px;">
+                    <div class="progress-bar" role="progressbar" style="width: 40%;" aria-valuenow="40" aria-valuemin="0" aria-valuemax="100"></div>
+                </div>
+                <small class="text-muted">Step {{ current_step }} of {{ total_steps }}</small>
+            </div>
+
+            <!-- Skip Tutorial Link -->
+            <div class="text-end mb-3">
+                <a href="{% url 'core:get_started' %}?skip=true" class="text-muted text-decoration-none">
+                    Skip Tutorial <i class="bi bi-arrow-right"></i>
+                </a>
+            </div>
+
+            <!-- Main Content -->
+            <div class="card shadow">
+                <div class="card-body p-5">
+                    <div class="text-center mb-5">
+                        <div class="mb-3">
+                            <i class="bi bi-graph-up-arrow display-1 text-primary"></i>
+                        </div>
+                        <h2 class="card-title mb-3">How GameReady Works</h2>
+                    </div>
+
+                    <!-- Introduction Content -->
+                    <div class="mb-5">
+                        <!-- Athlete Self-Reporting -->
+                        <div class="mb-4">
+                            <div class="d-flex align-items-start mb-3">
+                                <div class="flex-shrink-0 me-3">
+                                    <div class="rounded-circle bg-primary bg-opacity-10 d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
+                                        <i class="bi bi-clipboard-check text-primary fs-4"></i>
+                                    </div>
+                                </div>
+                                <div class="flex-grow-1">
+                                    <h5 class="mb-2">Athletes Self-Report Daily</h5>
+                                    <p class="text-muted mb-0">
+                                        Each day, your athletes log seven wellness metrics: sleep quality, energy levels, muscle soreness, mood/stress, motivation, nutrition, and hydration. They rate each metric on a 1-10 scale, giving you real-time insights into how they're feeling.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Condition Score -->
+                        <div class="mb-4">
+                            <div class="d-flex align-items-start mb-3">
+                                <div class="flex-shrink-0 me-3">
+                                    <div class="rounded-circle bg-success bg-opacity-10 d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
+                                        <i class="bi bi-speedometer2 text-success fs-4"></i>
+                                    </div>
+                                </div>
+                                <div class="flex-grow-1">
+                                    <h5 class="mb-2">Condition Score Calculated</h5>
+                                    <p class="text-muted mb-0">
+                                        The app automatically calculates a <strong>Condition Score</strong> (0-100%) from these metrics using evidence-based weights. This score gives you a clear picture of each athlete's readiness to train or compete on any given day.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Coach Tracking -->
+                        <div class="mb-4">
+                            <div class="d-flex align-items-start mb-3">
+                                <div class="flex-shrink-0 me-3">
+                                    <div class="rounded-circle bg-info bg-opacity-10 d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
+                                        <i class="bi bi-people text-info fs-4"></i>
+                                    </div>
+                                </div>
+                                <div class="flex-grow-1">
+                                    <h5 class="mb-2">Track Your Team</h5>
+                                    <p class="text-muted mb-0">
+                                        Your dashboard shows the team's condition at a glance. See who's ready, who needs rest, and who might be at risk. Quickly identify athletes who are below target ranges or missing reports, so you can make informed decisions about training loads and match selection.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Planning & Scheduling -->
+                        <div class="mb-4">
+                            <div class="d-flex align-items-start mb-3">
+                                <div class="flex-shrink-0 me-3">
+                                    <div class="rounded-circle bg-warning bg-opacity-10 d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
+                                        <i class="bi bi-calendar-event text-warning fs-4"></i>
+                                    </div>
+                                </div>
+                                <div class="flex-grow-1">
+                                    <h5 class="mb-2">Plan & Schedule</h5>
+                                    <p class="text-muted mb-0">
+                                        Set up your team schedule with different day types (Training, Matches, Recovery, etc.) and target readiness ranges for each. The dashboard automatically highlights when athletes fall outside expected ranges, helping you optimize training and ensure peak performance when it matters most.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Navigation -->
+                    <div class="d-flex justify-content-between mt-5 pt-4 border-top">
+                        <form method="post">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="back">
+                            <button type="submit" class="btn btn-outline-secondary">
+                                <i class="bi bi-arrow-left"></i> Back
+                            </button>
+                        </form>
+                        <form method="post">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="next">
+                            <button type="submit" class="btn btn-primary">
+                                Continue <i class="bi bi-arrow-right"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

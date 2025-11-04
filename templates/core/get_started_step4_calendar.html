@@ -1,0 +1,53 @@
+<div class="card-header">
+    <div class="date-nav">
+        <div class="date-picker">
+            <a href="?month={{ prev_month|date:'Y-m' }}" class="date-btn js-ts-month" data-month="{{ prev_month|date:'Y-m' }}" title="Previous month">←</a>
+            <div class="date-label">{{ month_name }} {{ current_year }}</div>
+            <a href="?month={{ next_month|date:'Y-m' }}" class="date-btn js-ts-month" data-month="{{ next_month|date:'Y-m' }}" title="Next month">→</a>
+        </div>
+    </div>
+</div>
+<div class="card-body">
+    <div class="calendar-scroll">
+        <div class="calendar-grid">
+            <div class="row g-0 calendar-header">
+                <div class="col text-center fw-bold">Mon</div>
+                <div class="col text-center fw-bold">Tue</div>
+                <div class="col text-center fw-bold">Wed</div>
+                <div class="col text-center fw-bold">Thu</div>
+                <div class="col text-center fw-bold">Fri</div>
+                <div class="col text-center fw-bold">Sat</div>
+                <div class="col text-center fw-bold">Sun</div>
+            </div>
+            {% for day_data in calendar_data %}
+                {% if forloop.counter0|divisibleby:7 %}<div class="row g-0 calendar-week">{% endif %}
+                <div class="col calendar-day 
+                    {% if not day_data.is_current_month %}calendar-day-other{% endif %}
+                    {% if day_data.is_today %}calendar-day-today{% endif %}"
+                    {% if day_data.is_current_month %}
+                      data-date="{{ day_data.date_str }}"
+                      data-weekday="{{ day_data.weekday }}"
+                      data-current-tag="{{ day_data.tag_id }}"
+                    {% endif %}>
+                    {% if day_data.is_current_month %}
+                    <div class="d-flex justify-content-between align-items-start">
+                      <div class="day-number">{{ day_data.day }}</div>
+                      <div class="day-tag">
+                        {% if day_data.tag_id %}
+                          <span class="badge" style="background-color: {{ day_data.tag_color }}; color: #fff;">{{ day_data.tag_name }}</span>
+                        {% else %}
+                          <span class="badge bg-light text-dark">—</span>
+                        {% endif %}
+                      </div>
+                    </div>
+                    {% endif %}
+                </div>
+                {% if forloop.counter|divisibleby:7 or forloop.last %}</div>{% endif %}
+            {% endfor %}
+        </div>
+    </div>
+    <p class="text-muted small text-center mt-3 mb-0">
+        <em>You can scroll left and right to see the full week</em>
+    </p>
+</div>
+

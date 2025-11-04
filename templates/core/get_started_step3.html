@@ -1,0 +1,265 @@
+{% extends 'base.html' %}
+
+{% block title %}Get Started - Step 3{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-10 col-lg-8">
+            <!-- Progress Indicator -->
+            <div class="text-center mb-4">
+                <div class="progress mb-2" style="height: 8px;">
+                    <div class="progress-bar" role="progressbar" style="width: 60%;" aria-valuenow="60" aria-valuemin="0" aria-valuemax="100"></div>
+                </div>
+                <small class="text-muted">Step {{ current_step }} of {{ total_steps }}</small>
+            </div>
+
+            <!-- Skip Tutorial Link -->
+            <div class="text-end mb-3">
+                <a href="{% url 'core:get_started' %}?skip=true" class="text-muted text-decoration-none">
+                    Skip Tutorial <i class="bi bi-arrow-right"></i>
+                </a>
+            </div>
+
+            <!-- Main Content -->
+            <div class="card shadow">
+                <div class="card-body p-5">
+                    <!-- Title -->
+                    <h2 class="text-center mb-5">Add Your Tags</h2>
+
+                    <!-- Explanation -->
+                    <div class="mb-5">
+                        <div class="alert alert-light border">
+                            <h6 class="alert-heading mb-3">How Tags Work</h6>
+                            <ul class="mb-0 ps-3">
+                                <li class="mb-2">Each tag represents a type of day (Training, Match, etc.)</li>
+                                <li class="mb-2">Tags have a <strong>target range</strong> (min and max readiness percentage)</li>
+                                <li class="mb-2">The dashboard shows which athletes are above, within, or below each day's target range</li>
+                                <li>This helps you quickly identify who needs attention before important days</li>
+                            </ul>
+                        </div>
+
+                        <div class="alert alert-info">
+                            <h6 class="alert-heading mb-2">Why Target Ranges?</h6>
+                            <p class="mb-0 small">
+                                Different days have different readiness goals. For example, on <strong>training days</strong> you might expect lower readiness (60-70%) as athletes push themselves, while on <strong>match days</strong> you want athletes in peak condition (80-100%). The target ranges help you set appropriate expectations for each day type.
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Tag Bubbles -->
+                    <div class="mb-4">
+                        <div class="tag-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; max-width: 500px; margin: 0 auto;">
+                            <!-- Training Tag -->
+                            <div class="tag-bubble {% if has_training %}tag-added{% endif %}" id="training-tag">
+                                <div class="tag-bubble-header">
+                                    <span class="color-dot" style="background-color: #0d6efd;"></span>
+                                    <span class="tag-name">Training</span>
+                                </div>
+                                <div class="tag-bubble-range">
+                                    <div class="range-label">Target Range</div>
+                                    <div class="range-value">60–70%</div>
+                                </div>
+                                {% if has_training %}
+                                    <div class="tag-bubble-actions">
+                                        <button type="button" class="btn btn-sm btn-success" disabled style="pointer-events: none;">
+                                            <i class="bi bi-check-circle"></i> Added
+                                        </button>
+                                    </div>
+                                {% else %}
+                                    <div class="tag-bubble-actions">
+                                        <button type="button" class="btn btn-sm btn-primary" onclick="createTag('Training', this)">
+                                            <i class="bi bi-plus-circle"></i> Add
+                                        </button>
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <!-- Matches Tag -->
+                            <div class="tag-bubble {% if has_matches %}tag-added{% endif %}" id="matches-tag">
+                                <div class="tag-bubble-header">
+                                    <span class="color-dot" style="background-color: #198754;"></span>
+                                    <span class="tag-name">Matches</span>
+                                </div>
+                                <div class="tag-bubble-range">
+                                    <div class="range-label">Target Range</div>
+                                    <div class="range-value">80–100%</div>
+                                </div>
+                                {% if has_matches %}
+                                    <div class="tag-bubble-actions">
+                                        <button type="button" class="btn btn-sm btn-success" disabled style="pointer-events: none;">
+                                            <i class="bi bi-check-circle"></i> Added
+                                        </button>
+                                    </div>
+                                {% else %}
+                                    <div class="tag-bubble-actions">
+                                        <button type="button" class="btn btn-sm btn-success" onclick="createTag('Matches', this)">
+                                            <i class="bi bi-plus-circle"></i> Add
+                                        </button>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <p class="text-center text-muted small mt-3 mb-0">
+                            <em>You can edit these and add more tags in the Schedule later</em>
+                        </p>
+                    </div>
+
+                    <!-- Navigation -->
+                    <div class="d-flex justify-content-between mt-5 pt-4 border-top">
+                        <form method="post">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="back">
+                            <button type="submit" class="btn btn-outline-secondary">
+                                <i class="bi bi-arrow-left"></i> Back
+                            </button>
+                        </form>
+                        <form method="post">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="next">
+                            <button type="submit" class="btn btn-primary" id="continueBtn" {% if not has_any_tags %}disabled{% endif %}>
+                                Continue <i class="bi bi-arrow-right"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Tag bubble styles matching the app - smaller for tutorial */
+.tag-bubble {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 10px 12px;
+    transition: transform 0.15s ease, box-shadow 0.2s ease;
+    position: relative;
+}
+
+.tag-bubble.tag-added {
+    border-color: #198754;
+    background: #f0f9f4;
+}
+
+.tag-bubble-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+}
+
+.color-dot {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 2px solid #dee2e6;
+}
+
+.tag-name {
+    font-weight: 700;
+    font-size: 14px;
+}
+
+.tag-bubble-range {
+    text-align: center;
+}
+
+.tag-bubble-range .range-label {
+    font-size: 12px;
+    color: #6b7280;
+    margin-bottom: 4px;
+}
+
+.tag-bubble-range .range-value {
+    font-size: 16px;
+    font-weight: 800;
+    color: #1B5E20;
+    margin-bottom: 4px;
+}
+
+.tag-bubble-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+    justify-content: center;
+}
+</style>
+
+<script>
+function createTag(tagName, button) {
+    // Disable button and show loading state
+    button.disabled = true;
+    const originalHtml = button.innerHTML;
+    button.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Adding...';
+    
+    const formData = new FormData();
+    formData.append('action', 'create_tag');
+    formData.append('tag_name', tagName);
+    formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+    
+    fetch('{% url "core:get_started" step=3 %}', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Update button to show success
+            button.classList.remove('btn-primary', 'btn-success');
+            button.classList.add('btn-success');
+            button.innerHTML = '<i class="bi bi-check-circle"></i> Added';
+            button.disabled = true;
+            button.style.pointerEvents = 'none';
+            
+            // Update the tag bubble
+            const tagBubble = button.closest('.tag-bubble');
+            if (tagBubble) {
+                tagBubble.classList.add('tag-added');
+            }
+            
+            // Enable continue button if we have at least one tag
+            updateContinueButton();
+        } else {
+            // Re-enable button and show error
+            button.disabled = false;
+            button.innerHTML = originalHtml;
+            alert('Error: ' + (data.message || 'Failed to create tag. Please try again.'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        button.disabled = false;
+        button.innerHTML = originalHtml;
+        alert('Error creating tag. Please try again.');
+    });
+}
+
+// Update continue button state based on existing tags
+function updateContinueButton() {
+    const submitBtn = document.getElementById('continueBtn');
+    if (submitBtn) {
+        // Count tags that have been added (disabled success buttons)
+        const tagButtons = document.querySelectorAll('.tag-bubble-actions button');
+        const tagCount = Array.from(tagButtons).filter(btn => 
+            btn.disabled && btn.classList.contains('btn-success')
+        ).length;
+        submitBtn.disabled = tagCount === 0;
+        if (tagCount === 0) {
+            submitBtn.title = 'Add at least one tag to continue';
+        } else {
+            submitBtn.title = '';
+            submitBtn.classList.remove('disabled');
+        }
+    }
+}
+
+// Initialize button state on page load
+updateContinueButton();
+</script>
+{% endblock %}

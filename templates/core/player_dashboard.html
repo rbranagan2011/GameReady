@@ -1,0 +1,310 @@
+{% extends 'base.html' %}
+
+{% block title %}Player Dashboard{% endblock %}
+
+{% block extra_css %}
+<style>
+.dashboard { max-width: 720px; margin: 0 auto; }
+.section { background: #fff; border: 1px solid rgba(0,0,0,0.06); border-radius: 12px; padding: 16px; margin-bottom: 14px; }
+.header-row { display:flex; align-items:center; justify-content:space-between; }
+.small-circle { width: 150px; height: 150px; position: relative; margin: 0 auto; }
+.small-circle svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.small-circle .bg { fill:none; stroke:#e6e7eb; stroke-width: 10; }
+.small-circle .fg { fill:none; stroke-width: 10; stroke-linecap: round; transition: stroke-dasharray .6s ease-out; }
+/* Align colors with coach dashboard: in-range (green), below (orange), above (blue) */
+.small-circle .fg.in { stroke:#1B5E20; }
+.small-circle .fg.below { stroke:#FF8F00; }
+.small-circle .fg.above { stroke:#0d6efd; }
+.small-circle .score { position:absolute; top:0; left:0; right:0; bottom:0; display:flex; align-items:center; justify-content:center; font-size: 36px; font-weight: 800; text-align:center; line-height:1; margin:0; padding:0; box-sizing:border-box; font-variant-numeric:tabular-nums; letter-spacing:0; text-rendering:optimizeLegibility; -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale; }
+.small-circle .score > span { display:block; width:100%; text-align:center; }
+.nudge { text-align:center; margin-top: 8px; font-weight: 600; color:#1f2937; }
+.subtle { text-align:center; color:#6b7280; font-size: 13px; }
+.sparkline { width: 100%; height: 60px; }
+.spark-meta { display:flex; justify-content:space-between; margin-top:6px; color:#6b7280; font-size:12px; }
+.badges { display:flex; gap:8px; justify-content:center; margin-top:8px; }
+.chip { background:#f7f7f8; border:1px solid rgba(0,0,0,0.05); padding:8px 10px; border-radius:999px; font-size:13px; }
+.streak { text-align:center; font-weight:600; }
+.clickable { cursor: pointer; transition: transform .15s ease; }
+.clickable:hover { transform: scale(1.06); }
+.modal-backdrop { position:fixed; inset:0; background:rgba(0,0,0,0.45); display:none; align-items:center; justify-content:center; z-index:1000; }
+.modal-card { background:#fff; border-radius:12px; padding:16px; width: 90%; max-width: 520px; }
+.modal-title { font-weight:700; margin-bottom:8px; }
+.metric-grid { display:grid; grid-template-columns: repeat(3, 1fr); gap:12px; }
+.metric-item { text-align:center; background:#f8f9fa; border:1px solid rgba(0,0,0,0.05); border-radius:10px; padding:10px; }
+.close-btn { border:none; background:#eee; border-radius:8px; padding:6px 10px; float:right; }
+
+/* Coach-style date navigation */
+.date-nav { display:flex; justify-content:center; width:100%; margin-bottom: 10px; }
+.date-picker { display:flex; align-items:center; background:#ffffff; border:2px solid #e0e0e0; border-radius:50px; padding:6px 12px; box-shadow:0 2px 8px rgba(0,0,0,0.1); transition: all 0.3s ease; max-width: 320px; width: 100%; position: relative; }
+.date-picker:hover { border-color:#007bff; box-shadow:0 4px 12px rgba(0,123,255,0.15); transform: translateY(-1px); }
+.date-picker:focus-within { border-color:#007bff; box-shadow:0 0 0 3px rgba(0,123,255,0.1); }
+.date-btn { background:none; border:none; padding:10px; cursor:pointer; border-radius:50%; display:flex; align-items:center; justify-content:center; transition: all 0.2s ease; color:#666; font-size:16px; min-width:40px; min-height:40px; }
+.date-btn:hover { background:#f8f9fa; color:#007bff; transform: scale(1.1); }
+.date-btn:active { transform: scale(0.95); }
+.date-label { font-size:16px; font-weight:600; color:#333; text-align:center; flex:1; padding:0 12px; white-space:nowrap; }
+
+.fade-container { transition: opacity .2s ease; }
+
+.back-row { display:flex; align-items:center; gap:8px; }
+.back-link { display:inline-flex; align-items:center; gap:6px; color:#0d6efd; text-decoration:none; font-weight:600; }
+/* Respect reduced-motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  .small-circle .fg { transition: none; }
+  .clickable:hover { transform: none; }
+}
+
+/* Mobile-specific score alignment fixes */
+@media (max-width: 768px) {
+  .small-circle {
+    position: relative !important;
+    overflow: visible !important;
+  }
+  .small-circle .score {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    text-align: center !important;
+    width: 100% !important;
+    height: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    line-height: 1 !important;
+    box-sizing: border-box !important;
+    font-variant-numeric: tabular-nums !important;
+    letter-spacing: 0 !important;
+    transform: none !important;
+    text-rendering: optimizeLegibility !important;
+    -webkit-font-smoothing: antialiased !important;
+    -moz-osx-font-smoothing: grayscale !important;
+  }
+  .small-circle .score > span {
+    display: block !important;
+    width: 100% !important;
+    text-align: center !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard">
+  {% if back_url %}
+  <div class="section">
+    <div class="back-row">
+      <a href="{{ back_url }}" class="back-link">← Back to Coach Dashboard</a>
+      {% if athlete_name %}<div style="color:#6b7280;">Viewing {{ athlete_name }}</div>{% endif %}
+    </div>
+  </div>
+  {% endif %}
+  <div class="section" style="text-align:center; font-weight:700; font-size:18px;">Player Dashboard</div>
+  {% include 'core/_player_actions.html' %}
+  <div id="weekly-container" class="fade-container">
+    <div class="section" style="font-weight:700;">Weekly Overview</div>
+    <!-- Weekly navigation -->
+    <div class="section">
+      <div class="date-nav">
+        <div class="date-picker">
+          <a href="?week_start={{ prev_week_start|date:'Y-m-d' }}" class="date-btn js-week-nav" data-week-start="{{ prev_week_start|date:'Y-m-d' }}" title="Previous week" aria-label="Previous week" role="button">←</a>
+          <div class="date-label">{{ week_label }}</div>
+          <a href="?week_start={{ next_week_start|date:'Y-m-d' }}" class="date-btn js-week-nav" data-week-start="{{ next_week_start|date:'Y-m-d' }}" title="Next week" aria-label="Next week" role="button">→</a>
+        </div>
+      </div>
+      <!-- Recent days table -->
+      <div style="display:grid; grid-template-columns: 1.2fr 1.2fr 1fr 1fr; gap:8px; align-items:center; font-weight:600; margin-bottom:6px;">
+        <div>Day</div><div>Type</div><div>Score</div><div>Target</div>
+      </div>
+      {% if not has_schedule %}
+        <div class="alert alert-info" role="status">You are not assigned to a team yet. Day types and targets will appear once a coach adds you to a team.</div>
+      {% elif not has_week_data %}
+        <div class="alert alert-secondary" role="status">No reports this week yet. Submit your first report to see your data here.</div>
+      {% endif %}
+      {% for r in recent_rows %}
+        <div style="display:grid; grid-template-columns: 1.2fr 1.2fr 1fr 1fr; gap:8px; align-items:center; padding:6px 0; border-top: 1px solid rgba(0,0,0,0.06);">
+          <div>{{ r.day_label }}</div>
+          <div>{{ r.type }}</div>
+          <div style="display:flex; justify-content:center; align-items:center;">
+            <div class="small-circle clickable" data-score="{{ r.score|default:0 }}" data-date="{{ r.date_str }}" style="width:46px;height:46px;" tabindex="0" role="button" aria-label="View metrics for {{ r.date_str }}">
+              <svg viewBox="0 0 100 100">
+                <circle class="bg" cx="50" cy="50" r="40"></circle>
+                <circle class="fg {% if r.status == 'above' %}above{% elif r.status == 'in' %}in{% elif r.status == 'below' %}below{% else %}below{% endif %}" cx="50" cy="50" r="40" stroke-dasharray="0 251.3" stroke-dashoffset="0"></circle>
+              </svg>
+              <div class="score" style="font-size:16px;"><span style="display:block;">{{ r.score|default:'—' }}</span></div>
+            </div>
+          </div>
+          <div>
+            <span class="chip" style="display:inline-block; font-weight:700; font-size:14px; white-space:nowrap;">{{ r.range_min }}–{{ r.range_max }}%</span>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<!-- Modal for day metrics -->
+<div id="metricsModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+  <div class="modal-card" role="document">
+    <button class="close-btn" id="modalClose" aria-label="Close">Close</button>
+    <div class="modal-title" id="modalTitle">Day metrics</div>
+    <div id="modalBody">
+      <div style="text-align:center; color:#6b7280;">Loading…</div>
+    </div>
+  </div>
+  </div>
+
+<!-- Monthly overview -->
+<div class="dashboard">
+  <div id="monthly-container" class="fade-container">
+    <div class="section" style="font-weight:700;">Monthly Overview</div>
+    <!-- Monthly navigation -->
+    <div class="section">
+      <div class="date-nav">
+        <div class="date-picker">
+          <a href="?month={{ prev_month|date:'Y-m' }}" class="date-btn js-month-nav" data-month="{{ prev_month|date:'Y-m' }}" title="Previous month" aria-label="Previous month" role="button">←</a>
+          <div class="date-label">{{ current_month_name }} {{ current_year }}</div>
+          <a href="?month={{ next_month|date:'Y-m' }}" class="date-btn js-month-nav" data-month="{{ next_month|date:'Y-m' }}" title="Next month" aria-label="Next month" role="button">→</a>
+        </div>
+      </div>
+      <div style="display:grid; grid-template-columns: repeat(7, 1fr); gap:8px; text-align:center; color:#6b7280; font-size:12px; margin-bottom:8px;">
+        <div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div><div>Sun</div>
+      </div>
+      <div style="display:grid; grid-template-columns: repeat(7, 1fr); gap:10px;">
+        {% for c in month_cells %}
+          <div style="min-height:82px; border:1px solid rgba(0,0,0,0.06); border-radius:10px; padding:6px; position:relative; background:#fff;">
+            {% if c.date %}
+              <div style="position:absolute; top:6px; left:8px; font-size:12px; color:#6b7280;">{{ c.day }}</div>
+              <div style="display:flex; justify-content:center; align-items:center; height:100%;">
+            <div class="small-circle clickable" data-date="{{ c.date_str }}" data-score="{{ c.score|default:0 }}" style="width:42px;height:42px;" tabindex="0" role="button" aria-label="View metrics for {{ c.date_str }}">
+                  <svg viewBox="0 0 100 100">
+                    <circle class="bg" cx="50" cy="50" r="40"></circle>
+                    <circle class="fg {% if c.status == 'above' %}above{% elif c.status == 'in' %}in{% elif c.status == 'below' %}below{% else %}below{% endif %}" cx="50" cy="50" r="40" stroke-dasharray="0 251.3" stroke-dashoffset="0"></circle>
+                  </svg>
+                  <div class="score" style="font-size:14px;">{{ c.score|default:'—' }}</div>
+                </div>
+              </div>
+            {% endif %}
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function animateSmallCircles(root){
+  const prefersReduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  (root||document).querySelectorAll('.section .small-circle').forEach(function(el){
+    const fg = el.querySelector('.fg'); if(!fg) return;
+    const s = parseInt(el.getAttribute('data-score')) || 0;
+    const R=40, C=2*Math.PI*R, P=(s/100)*C;
+    fg.style.strokeDasharray=`0 ${C}`;
+    if(prefersReduced){ fg.style.strokeDasharray=`${P} ${C}`; return; }
+    setTimeout(()=>{ fg.style.strokeDasharray=`${P} ${C}`; }, 60);
+  });
+}
+
+(function(){ animateSmallCircles(document); })();
+
+// Click to open day metrics (only for score circles, not target)
+(function(){
+  const modal = document.getElementById('metricsModal');
+  const modalBody = document.getElementById('modalBody');
+  const modalTitle = document.getElementById('modalTitle');
+  const closeBtn = document.getElementById('modalClose');
+  closeBtn.addEventListener('click', ()=> modal.style.display='none');
+  modal.addEventListener('click', (e)=>{ if(e.target===modal) modal.style.display='none'; });
+
+  const metricsUrl = '{{ metrics_base_url|default:"/player-dashboard/metrics/" }}';
+  const weekPartialUrl = '{{ week_partial_url|default:"/player-dashboard/weekly/" }}';
+  const monthPartialUrl = '{{ month_partial_url|default:"/player-dashboard/monthly/" }}';
+
+  function bindCircleClicks(root){
+    (root||document).querySelectorAll('.section .small-circle.clickable').forEach(function(el){
+      function openModal(){
+        const dateStr = this.getAttribute('data-date');
+        if(!dateStr) return;
+        modal.style.display='flex';
+        // focus management
+        setTimeout(()=>{ closeBtn.focus(); }, 0);
+        modalTitle.textContent = `Metrics for ${dateStr}`;
+        modalBody.innerHTML = '<div style="text-align:center; color:#6b7280;">Loading…</div>';
+        fetch(`${metricsUrl}?date=${dateStr}`)
+          .then(r=>r.json())
+          .then(data=>{
+            if(!data.success){ modalBody.innerHTML = `<div style='color:#b91c1c;text-align:center;'>${data.message||'Failed to load'}</div>`; return; }
+            const items = data.metrics.map(m=>`<div class='metric-item'><div style='font-weight:700;font-size:18px;'>${m.score}</div><div style='font-size:12px;color:#6b7280;'>${m.name}</div></div>`).join('');
+            modalBody.innerHTML = `<div class='metric-grid'>${items}</div>`;
+          })
+          .catch(()=>{ modalBody.innerHTML = `<div style='color:#b91c1c;text-align:center;'>Failed to load</div>`; });
+      }
+      el.addEventListener('click', openModal);
+      el.addEventListener('keydown', function(e){ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); openModal.call(this); } });
+    });
+  }
+  bindCircleClicks(document);
+
+  // Smooth weekly navigation
+  function bindWeekNav(){
+    document.querySelectorAll('.js-week-nav').forEach(function(a){
+      a.addEventListener('click', function(e){
+        e.preventDefault();
+        const weekStart = this.getAttribute('data-week-start');
+        const container = document.getElementById('weekly-container');
+        container.style.opacity = 0.4;
+        fetch(`${weekPartialUrl}?week_start=${weekStart}`)
+          .then(r=>r.json())
+          .then(data=>{
+            if(!data.success) return;
+            container.innerHTML = data.html;
+            container.style.opacity = 1;
+            animateSmallCircles(container);
+            bindCircleClicks(container);
+            bindWeekNav();
+            const url = new URL(window.location);
+            url.searchParams.set('week_start', weekStart);
+            window.history.pushState({}, '', url);
+          })
+          .catch(()=>{ container.style.opacity = 1; });
+      });
+    });
+  }
+  bindWeekNav();
+
+  // Smooth monthly navigation
+  function bindMonthNav(){
+    document.querySelectorAll('.js-month-nav').forEach(function(a){
+      a.addEventListener('click', function(e){
+        e.preventDefault();
+        const month = this.getAttribute('data-month');
+        const container = document.getElementById('monthly-container');
+        container.style.opacity = 0.4;
+        fetch(`${monthPartialUrl}?month=${month}`)
+          .then(r=>r.json())
+          .then(data=>{
+            if(!data.success) return;
+            container.innerHTML = data.html;
+            container.style.opacity = 1;
+            animateSmallCircles(container);
+            bindCircleClicks(container);
+            bindMonthNav();
+            const url = new URL(window.location);
+            url.searchParams.set('month', month);
+            window.history.pushState({}, '', url);
+          })
+          .catch(()=>{ container.style.opacity = 1; });
+      });
+    });
+  }
+  bindMonthNav();
+
+  // ESC to close modal
+  document.addEventListener('keydown', function(e){ if(e.key==='Escape'){ modal.style.display='none'; }});
+})();
+</script>
+{% endblock %}

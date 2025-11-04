@@ -1,0 +1,338 @@
+{% extends 'base.html' %}
+
+{% block title %}Athlete Check-In - GameReady{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white text-center">
+                <h3 class="card-title mb-0">
+                    Athlete Check-In
+                </h3>
+            </div>
+            <div class="card-body">
+                <form method="post" id="readinessForm">
+                    {% csrf_token %}
+                    <div class="alert alert-light border mb-4" role="note">
+                        Answer the following questions by selecting a number between 1 and 10.
+                        <div class="text-muted" style="font-size: 0.75rem; font-style: italic; margin-top: 2px;">For simplicity, 1 is always the worst outcome and 10 is the best outcome.</div>
+                    </div>
+                    
+                    <!-- Sleep Quality -->
+                    <div class="metric-row mb-4 d-flex align-items-center">
+                        <label for="{{ form.sleep_quality.id_for_label }}" class="form-label mb-0 me-2">
+                            {{ form.sleep_quality.label }}
+                        </label>
+                        <div class="info-tooltip me-2">
+                            <i class="bi bi-info-circle text-muted" data-bs-toggle="tooltip" data-bs-placement="top" title="1-2: Very poor sleep, restless or &lt;5 hours&#10;3-4: Below average, interrupted sleep&#10;5-6: Average sleep quality&#10;7-8: Good, mostly restful sleep&#10;9-10: Excellent, deep and uninterrupted sleep"></i>
+                        </div>
+                        {{ form.sleep_quality }}
+                    </div>
+
+                    <!-- Energy Level -->
+                    <div class="metric-row mb-4 d-flex align-items-center">
+                        <label for="{{ form.energy_fatigue.id_for_label }}" class="form-label mb-0 me-2">
+                            {{ form.energy_fatigue.label }}
+                        </label>
+                        <div class="info-tooltip me-2">
+                            <i class="bi bi-info-circle text-muted" data-bs-toggle="tooltip" data-bs-placement="top" title="1-2: Exhausted, very low energy&#10;3-4: Below average energy, feeling tired&#10;5-6: Average energy level&#10;7-8: Good energy, feeling alert&#10;9-10: High energy, fully energized and ready"></i>
+                        </div>
+                        {{ form.energy_fatigue }}
+                    </div>
+
+                    <!-- Muscle Soreness -->
+                    <div class="metric-row mb-4 d-flex align-items-center">
+                        <label for="{{ form.muscle_soreness.id_for_label }}" class="form-label mb-0 me-2">
+                            {{ form.muscle_soreness.label }}
+                        </label>
+                        <div class="info-tooltip me-2">
+                            <i class="bi bi-info-circle text-muted" data-bs-toggle="tooltip" data-bs-placement="top" title="1-2: Very sore, significant muscle pain&#10;3-4: Below average, noticeable soreness&#10;5-6: Average muscle soreness&#10;7-8: Minimal soreness, feeling good&#10;9-10: No soreness, muscles feel loose and ready"></i>
+                        </div>
+                        {{ form.muscle_soreness }}
+                    </div>
+
+                    <!-- Hydration -->
+                    <div class="metric-row mb-4 d-flex align-items-center">
+                        <label for="{{ form.hydration.id_for_label }}" class="form-label mb-0 me-2">
+                            {{ form.hydration.label }}
+                        </label>
+                        <div class="info-tooltip me-2">
+                            <i class="bi bi-info-circle text-muted" data-bs-toggle="tooltip" data-bs-placement="top" title="1-2: Dehydrated, dry mouth, dark urine&#10;3-4: Below average hydration&#10;5-6: Average hydration level&#10;7-8: Good hydration, clear urine&#10;9-10: Well-hydrated, clear urine and alert"></i>
+                        </div>
+                        {{ form.hydration }}
+                    </div>
+
+                    <!-- Nutrition -->
+                    <div class="metric-row mb-4 d-flex align-items-center">
+                        <label for="{{ form.nutrition_quality.id_for_label }}" class="form-label mb-0 me-2">
+                            {{ form.nutrition_quality.label }}
+                        </label>
+                        <div class="info-tooltip me-2">
+                            <i class="bi bi-info-circle text-muted" data-bs-toggle="tooltip" data-bs-placement="top" title="1-2: Poor nutrition, skipped meals, junk food&#10;3-4: Below average nutrition&#10;5-6: Average nutrition quality&#10;7-8: Good nutrition, balanced meals&#10;9-10: Excellent nutrition, balanced meals and timing"></i>
+                        </div>
+                        {{ form.nutrition_quality }}
+                    </div>
+
+                    <!-- Motivation -->
+                    <div class="metric-row mb-4 d-flex align-items-center">
+                        <label for="{{ form.motivation.id_for_label }}" class="form-label mb-0 me-2">
+                            {{ form.motivation.label }}
+                        </label>
+                        <div class="info-tooltip me-2">
+                            <i class="bi bi-info-circle text-muted" data-bs-toggle="tooltip" data-bs-placement="top" title="1-2: Not motivated, dreading training&#10;3-4: Below average motivation&#10;5-6: Average motivation to train&#10;7-8: Good motivation, looking forward to it&#10;9-10: Very motivated and excited to train"></i>
+                        </div>
+                        {{ form.motivation }}
+                    </div>
+
+                    <!-- Overall Headspace -->
+                    <div class="metric-row mb-4 d-flex align-items-center">
+                        <label for="{{ form.mood_stress.id_for_label }}" class="form-label mb-0 me-2">
+                            {{ form.mood_stress.label }}
+                        </label>
+                        <div class="info-tooltip me-2">
+                            <i class="bi bi-info-circle text-muted" data-bs-toggle="tooltip" data-bs-placement="top" title="1-2: Very stressed, low mood, anxious&#10;3-4: Below average mood, some stress&#10;5-6: Average mood and stress level&#10;7-8: Good mood, minimal stress&#10;9-10: Calm, positive and clear-headed"></i>
+                        </div>
+                        {{ form.mood_stress }}
+                    </div>
+
+                    <!-- Comments -->
+                    <div class="comments-section mb-4 p-3 rounded" style="background-color: #f8f9fa; border-left: 2px solid #6c757d;">
+                        <h6 class="mb-3 fw-bold text-muted">Additional Comments</h6>
+                        {{ form.comments }}
+                    </div>
+
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            Submit Check-In
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Custom stepper controls for 1-10 rating inputs */
+.stepper-control {
+    display: flex;
+    align-items: center;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    background: white;
+    overflow: hidden;
+    width: 90px;
+    flex-shrink: 0;
+}
+
+.stepper-btn {
+    background: #f8f9fa;
+    border: none;
+    padding: 6px 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #495057;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-width: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.stepper-btn:hover {
+    background: #e9ecef;
+    color: #0d6efd;
+}
+
+.stepper-btn:active {
+    background: #dee2e6;
+    transform: scale(0.95);
+}
+
+.stepper-minus {
+    border-right: 1px solid #dee2e6;
+}
+
+.stepper-plus {
+    border-left: 1px solid #dee2e6;
+}
+
+.stepper-input {
+    border: none;
+    text-align: center;
+    font-weight: 600;
+    font-size: 14px;
+    padding: 6px 4px;
+    width: 34px;
+    background: white;
+    color: #495057;
+    outline: none;
+}
+
+.stepper-input:focus {
+    background: #f8f9fa;
+}
+
+.metric-row {
+    min-height: 40px;
+}
+
+.form-label {
+    font-weight: 500;
+    flex-grow: 1;
+    font-size: 0.9rem;
+}
+
+/* Information tooltips for rating guidance */
+.info-tooltip {
+    cursor: help;
+    display: inline-flex;
+    align-items: center;
+}
+
+.info-tooltip i {
+    font-size: 0.9rem;
+    transition: color 0.2s ease;
+}
+
+.info-tooltip:hover i {
+    color: #0d6efd !important;
+}
+
+/* Bootstrap tooltip customization */
+/* Nicer guidance bubble */
+.tooltip {
+    font-size: 0.9rem;
+    max-width: 320px;
+}
+.tooltip .tooltip-inner {
+    text-align: left;
+    line-height: 1.5;
+    white-space: pre-line;
+    background: #111827; /* slate-900 */
+    color: #f9fafb; /* near white */
+    border-radius: 10px;
+    padding: 10px 12px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+}
+.tooltip.bs-tooltip-top .tooltip-arrow::before,
+.tooltip.bs-tooltip-bottom .tooltip-arrow::before,
+.tooltip.bs-tooltip-start .tooltip-arrow::before,
+.tooltip.bs-tooltip-end .tooltip-arrow::before {
+    background: #111827;
+}
+
+/* Visual feedback colors based on rating values (1-2: Red, 3-4: Amber, 5-6: Gray, 7-8: Green, 9-10: Green) */
+.stepper-control.readiness-poor {
+    border-color: #dc3545;
+    background-color: #fff5f5;
+}
+
+.stepper-control.readiness-below-avg {
+    border-color: #fd7e14;
+    background-color: #fffbf0;
+}
+
+.stepper-control.readiness-average {
+    border-color: #6c757d;
+    background-color: #f8f9fa;
+}
+
+.stepper-control.readiness-good {
+    border-color: #198754;
+    background-color: #f0fff4;
+}
+
+.stepper-control.readiness-excellent {
+    border-color: #198754;
+    background-color: #f0fff4;
+}
+
+/* Mobile-optimized stepper controls for better touch interaction */
+@media (max-width: 768px) {
+    .stepper-control {
+        width: 100px;
+    }
+    
+    .stepper-btn {
+        padding: 8px 10px;
+        min-width: 32px;
+        font-size: 16px;
+    }
+    
+    .stepper-input {
+        padding: 8px 4px;
+        font-size: 16px;
+        width: 36px;
+    }
+}
+</style>
+
+<script>
+// Initialize Bootstrap tooltips for rating guidance
+document.addEventListener('DOMContentLoaded', function() {
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl, {
+            delay: { "show": 300, "hide": 100 },
+            trigger: 'hover focus'
+        });
+    });
+    
+    // Apply visual feedback colors to stepper controls based on rating values
+    const stepperInputs = document.querySelectorAll('.stepper-input');
+    stepperInputs.forEach(function(input) {
+        function updateReadinessColor() {
+            const value = parseInt(input.value);
+            const stepperControl = input.closest('.stepper-control');
+            stepperControl.classList.remove('readiness-poor', 'readiness-below-avg', 'readiness-average', 'readiness-good', 'readiness-excellent');
+            
+            if (value >= 1 && value <= 2) {
+                stepperControl.classList.add('readiness-poor'); // Red
+            } else if (value >= 3 && value <= 4) {
+                stepperControl.classList.add('readiness-below-avg'); // Amber
+            } else if (value >= 5 && value <= 6) {
+                stepperControl.classList.add('readiness-average'); // Gray
+            } else if (value >= 7 && value <= 8) {
+                stepperControl.classList.add('readiness-good'); // Green
+            } else if (value >= 9 && value <= 10) {
+                stepperControl.classList.add('readiness-excellent'); // Green
+            }
+        }
+        
+        // Set initial color
+        updateReadinessColor();
+        
+        // Update color on change
+        input.addEventListener('input', updateReadinessColor);
+        input.addEventListener('change', updateReadinessColor);
+    });
+    
+    // Handle plus/minus button clicks to increment/decrement rating values
+    document.querySelectorAll('.stepper-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            const targetId = this.getAttribute('data-target');
+            const input = document.getElementById(targetId);
+            const currentValue = parseInt(input.value);
+            const min = parseInt(input.getAttribute('min'));
+            const max = parseInt(input.getAttribute('max'));
+            
+            if (this.classList.contains('stepper-minus')) {
+                if (currentValue > min) {
+                    input.value = currentValue - 1;
+                }
+            } else if (this.classList.contains('stepper-plus')) {
+                if (currentValue < max) {
+                    input.value = currentValue + 1;
+                }
+            }
+            
+            // Trigger change event to update visual feedback colors
+            input.dispatchEvent(new Event('change'));
+        });
+    });
+});
+</script>
+{% endblock %}

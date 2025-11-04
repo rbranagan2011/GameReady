@@ -1,0 +1,77 @@
+{% extends 'base.html' %}
+
+{% block title %}Get Started - GameReady{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <div class="text-center mb-5">
+                <h1 class="display-5 mb-3">
+                    <i class="bi bi-heart-pulse text-primary"></i> GameReady
+                </h1>
+                <p class="lead text-muted">Choose your role to get started</p>
+            </div>
+
+            <div class="row g-4">
+                <div class="col-md-6">
+                    <div class="card h-100 border-2 shadow-sm" style="cursor: pointer;" onclick="document.getElementById('role-athlete-form').submit();">
+                        <div class="card-body text-center p-5">
+                            <div class="mb-4">
+                                <i class="bi bi-person-circle display-1 text-primary"></i>
+                            </div>
+                            <h3 class="card-title mb-3">I'm an Athlete</h3>
+                            <p class="card-text text-muted mb-4">
+                                Track your daily wellness metrics and see your readiness scores.
+                            </p>
+                            <form id="role-athlete-form" method="post" style="display: none;">
+                                {% csrf_token %}
+                                <input type="hidden" name="role" value="ATHLETE">
+                            </form>
+                            <button type="submit" form="role-athlete-form" class="btn btn-primary btn-lg">
+                                Continue as Athlete
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="card h-100 border-2 shadow-sm" style="cursor: pointer;" onclick="document.getElementById('role-coach-form').submit();">
+                        <div class="card-body text-center p-5">
+                            <div class="mb-4">
+                                <i class="bi bi-clipboard-data display-1 text-success"></i>
+                            </div>
+                            <h3 class="card-title mb-3">I'm a Coach</h3>
+                            <p class="card-text text-muted mb-4">
+                                Monitor your team's readiness and manage schedules.
+                            </p>
+                            <form id="role-coach-form" method="post" style="display: none;">
+                                {% csrf_token %}
+                                <input type="hidden" name="role" value="COACH">
+                            </form>
+                            <button type="submit" form="role-coach-form" class="btn btn-success btn-lg">
+                                Continue as Coach
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {% if request.user.is_authenticated %}
+            <div class="text-center mt-4">
+                <p class="text-muted">
+                    Already have an account? <a href="{% url 'core:home' %}">Go to dashboard</a>
+                </p>
+            </div>
+            {% else %}
+            <div class="text-center mt-4">
+                <p class="text-muted">
+                    Already have an account? <a href="{% url 'login' %}">Log in</a>
+                </p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+

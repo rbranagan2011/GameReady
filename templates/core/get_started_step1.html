@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+
+{% block title %}Get Started - Step 1{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-7">
+            <!-- Progress Indicator -->
+            <div class="text-center mb-4">
+                    <div class="progress mb-2" style="height: 8px;">
+                    <div class="progress-bar" role="progressbar" style="width: 20%;" aria-valuenow="20" aria-valuemin="0" aria-valuemax="100"></div>
+                </div>
+                <small class="text-muted">Step {{ current_step }} of {{ total_steps }}</small>
+            </div>
+
+            <!-- Skip Tutorial Link -->
+            <div class="text-end mb-3">
+                <a href="{% url 'core:get_started' %}?skip=true" class="text-muted text-decoration-none">
+                    Skip Tutorial <i class="bi bi-arrow-right"></i>
+                </a>
+            </div>
+
+            <!-- Main Content -->
+            <div class="card shadow">
+                <div class="card-body p-5">
+                    <div class="text-center mb-4">
+                        <div class="mb-3">
+                            <i class="bi bi-key display-1 text-primary"></i>
+                        </div>
+                        <h2 class="card-title mb-3">Your Team Code</h2>
+                        <p class="lead text-muted mb-4">
+                            This is the unique code your athletes need to join your team.
+                            <br><strong>We'll share this later.</strong>
+                        </p>
+                    </div>
+
+                    <!-- Team Code Display -->
+                    <div class="bg-light border rounded p-4 mb-4 text-center">
+                        <label class="form-label text-muted mb-2">Team Code</label>
+                        <div class="display-6 fw-bold font-monospace text-primary mb-0">
+                            {{ team.join_code }}
+                        </div>
+                    </div>
+
+                    <div class="text-center">
+                        <form method="post">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="next">
+                            <button type="submit" class="btn btn-primary btn-lg px-5">
+                                Continue <i class="bi bi-arrow-right"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

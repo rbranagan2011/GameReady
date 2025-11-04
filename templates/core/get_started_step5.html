@@ -1,0 +1,104 @@
+{% extends 'base.html' %}
+
+{% block title %}Get Started - Step 5{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-7">
+            <!-- Progress Indicator -->
+            <div class="text-center mb-4">
+                <div class="progress mb-2" style="height: 8px;">
+                    <div class="progress-bar" role="progressbar" style="width: 100%;" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100"></div>
+                </div>
+                <small class="text-muted">Step {{ current_step }} of {{ total_steps }}</small>
+            </div>
+
+
+            <!-- Main Content -->
+            <div class="card shadow">
+                <div class="card-body p-5">
+                    <div class="text-center mb-4">
+                        <div class="mb-3">
+                            <i class="bi bi-share display-1 text-primary"></i>
+                        </div>
+                        <h2 class="card-title mb-3">Share Your Team</h2>
+                        <p class="lead text-muted">
+                            Now you can share your team code or link with your athletes so they can join your team.
+                        </p>
+                    </div>
+
+                    <!-- Team Code -->
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold">Team Code</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control font-monospace fs-4 text-center fw-bold" 
+                                   id="teamCode" value="{{ team.join_code }}" readonly>
+                            <button class="btn btn-outline-secondary" type="button" onclick="copyToClipboard('teamCode', this)">
+                                <i class="bi bi-clipboard"></i> Copy
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Share Link -->
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold">Share Link</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control font-monospace small" 
+                                   id="shareLink" value="{{ share_link }}" readonly>
+                            <button class="btn btn-outline-secondary" type="button" onclick="copyToClipboard('shareLink', this)">
+                                <i class="bi bi-clipboard"></i> Copy
+                            </button>
+                        </div>
+                        <small class="text-muted">Players can click this link to automatically join your team.</small>
+                    </div>
+
+                    <!-- Navigation -->
+                    <div class="d-flex justify-content-between mt-4 gap-3">
+                        <form method="post">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="back">
+                            <button type="submit" class="btn btn-outline-secondary">
+                                <i class="bi bi-arrow-left"></i> Back
+                            </button>
+                        </form>
+                        <form method="post">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="next">
+                            <button type="submit" class="btn btn-primary btn-lg px-5">
+                                Complete Tutorial <i class="bi bi-check-circle"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function copyToClipboard(elementId, button) {
+    const element = document.getElementById(elementId);
+    element.select();
+    element.setSelectionRange(0, 99999);
+    
+    try {
+        navigator.clipboard.writeText(element.value);
+        const originalHtml = button.innerHTML;
+        button.innerHTML = '<i class="bi bi-check"></i> Copied!';
+        button.classList.add('btn-success');
+        button.classList.remove('btn-outline-secondary');
+        
+        setTimeout(() => {
+            button.innerHTML = originalHtml;
+            button.classList.remove('btn-success');
+            button.classList.add('btn-outline-secondary');
+        }, 2000);
+    } catch (err) {
+        document.execCommand('copy');
+        alert('Copied to clipboard!');
+    }
+}
+</script>
+{% endblock %}
+

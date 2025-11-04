@@ -15,7 +15,16 @@ if not SECRET_KEY:
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '').split(',')
+raw_allowed_hosts = os.environ.get('ALLOWED_HOSTS', '')
+extra_hosts = [host.strip() for host in raw_allowed_hosts.split(',') if host.strip()]
+
+# Always allow the Render service hostname by default.
+ALLOWED_HOSTS = ['gameready.onrender.com']
+
+# Append any custom hosts provided via environment variables.
+for host in extra_hosts:
+    if host not in ALLOWED_HOSTS:
+        ALLOWED_HOSTS.append(host)
 
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases

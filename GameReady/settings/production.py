@@ -26,6 +26,15 @@ for host in extra_hosts:
     if host not in ALLOWED_HOSTS:
         ALLOWED_HOSTS.append(host)
 
+# Configure CSRF trusted origins from environment; default to HTTPS versions of allowed hosts.
+raw_csrf_origins = os.environ.get('CSRF_TRUSTED_ORIGINS', '')
+CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in raw_csrf_origins.split(',') if origin.strip()]
+if not CSRF_TRUSTED_ORIGINS:
+    CSRF_TRUSTED_ORIGINS = [f'https://{host}' for host in ALLOWED_HOSTS]
+
+# Honor the X-Forwarded-Proto header set by Render's proxy.
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 

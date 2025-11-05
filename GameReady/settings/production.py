@@ -18,8 +18,13 @@ DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 raw_allowed_hosts = os.environ.get('ALLOWED_HOSTS', '')
 extra_hosts = [host.strip() for host in raw_allowed_hosts.split(',') if host.strip()]
 
-# Always allow the Render service hostname by default.
-ALLOWED_HOSTS = ['gameready.onrender.com']
+# Always allow the Render service hostname and primary custom domain by default.
+DEFAULT_HOSTS = [
+    'gameready.onrender.com',
+    'start.gamereadyapp.com',
+]
+
+ALLOWED_HOSTS = DEFAULT_HOSTS.copy()
 
 # Append any custom hosts provided via environment variables.
 for host in extra_hosts:

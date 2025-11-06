@@ -30,4 +30,6 @@ urlpatterns = [
 
 # Serve media files (both development and production)
 # Note: For production at scale, consider using cloud storage (S3) instead
-urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+# Ensure MEDIA_ROOT is a string for static() function
+media_root = str(settings.MEDIA_ROOT) if hasattr(settings, 'MEDIA_ROOT') else settings.MEDIA_ROOT
+urlpatterns += static(settings.MEDIA_URL, document_root=media_root)

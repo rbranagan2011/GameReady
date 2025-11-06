@@ -29,7 +29,9 @@ urlpatterns = [
 ]
 
 # Serve static files (both development and production)
-urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+# Ensure STATIC_ROOT is a string for static() function
+static_root = str(settings.STATIC_ROOT) if hasattr(settings, 'STATIC_ROOT') else settings.STATIC_ROOT
+urlpatterns += static(settings.STATIC_URL, document_root=static_root)
 
 # Serve media files (both development and production)
 # Note: For production at scale, consider using cloud storage (S3) instead

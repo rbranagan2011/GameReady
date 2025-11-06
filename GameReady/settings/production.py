@@ -6,6 +6,7 @@ These settings are for production deployment.
 
 from .base import *
 import os
+from pathlib import Path
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.environ.get('SECRET_KEY')
@@ -110,7 +111,6 @@ if isinstance(MEDIA_ROOT, Path):
     MEDIA_ROOT = str(MEDIA_ROOT)
 
 # Create media directory structure if it doesn't exist
-from pathlib import Path
 Path(MEDIA_ROOT).mkdir(parents=True, exist_ok=True)
 # Also ensure team_logos subdirectory exists
 TEAM_LOGOS_DIR = Path(MEDIA_ROOT) / 'team_logos'

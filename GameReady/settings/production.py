@@ -96,6 +96,10 @@ LOGGING = {
 LOGS_DIR = BASE_DIR / 'logs'
 LOGS_DIR.mkdir(exist_ok=True)
 
+# Static files configuration
+# Ensure STATIC_ROOT is a string (not Path object) for Django compatibility
+STATIC_ROOT = str(BASE_DIR / 'staticfiles')
+
 # Media files configuration for Render persistent disk
 # The persistent disk is mounted at /opt/render/project/src/media
 # Always use the persistent disk path if it exists, otherwise fall back

@@ -28,6 +28,6 @@ urlpatterns = [
     path('logout/', auth_views.LogoutView.as_view(), name='logout'),
 ]
 
-# Serve media files in development
-if settings.DEBUG:
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+# Serve media files (both development and production)
+# Note: For production at scale, consider using cloud storage (S3) instead
+urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

@@ -95,13 +95,23 @@ LOGGING = {
 LOGS_DIR = BASE_DIR / 'logs'
 LOGS_DIR.mkdir(exist_ok=True)
 
-# Create media directory if it doesn't exist
-# This ensures team_logos and other media subdirectories can be created
-MEDIA_DIR = BASE_DIR / 'media'
-MEDIA_DIR.mkdir(exist_ok=True)
+# Media files configuration for Render persistent disk
+# The persistent disk is mounted at /opt/render/project/src/media
+# If the disk is mounted, use that path; otherwise fall back to BASE_DIR / 'media'
+import os
+PERSISTENT_DISK_MEDIA_PATH = '/opt/render/project/src/media'
+if os.path.exists(PERSISTENT_DISK_MEDIA_PATH):
+    MEDIA_ROOT = PERSISTENT_DISK_MEDIA_PATH
+else:
+    # Fallback to default location if persistent disk not mounted
+    MEDIA_ROOT = BASE_DIR / 'media'
+
+# Create media directory structure if it doesn't exist
+from pathlib import Path
+Path(MEDIA_ROOT).mkdir(parents=True, exist_ok=True)
 # Also ensure team_logos subdirectory exists
-TEAM_LOGOS_DIR = MEDIA_DIR / 'team_logos'
-TEAM_LOGOS_DIR.mkdir(exist_ok=True)
+TEAM_LOGOS_DIR = Path(MEDIA_ROOT) / 'team_logos'
+TEAM_LOGOS_DIR.mkdir(parents=True, exist_ok=True)
 
 # Email configuration for production
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'

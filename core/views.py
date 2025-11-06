@@ -3101,6 +3101,13 @@ def team_admin(request):
         elif action == 'update_logo':
             logo_form = TeamLogoForm(request.POST, request.FILES, instance=team)
             if logo_form.is_valid():
+                # Ensure media directory exists before saving
+                from django.conf import settings
+                from pathlib import Path
+                media_root = Path(settings.MEDIA_ROOT)
+                team_logos_dir = media_root / 'team_logos'
+                team_logos_dir.mkdir(parents=True, exist_ok=True)
+                
                 logo_form.save()
                 # No success message - smooth UI update
                 return redirect('core:team_admin')

@@ -3147,6 +3147,13 @@ def team_admin(request):
                 
                 # No success message - smooth UI update
                 return redirect('core:team_admin')
+            else:
+                # Log detailed form errors for troubleshooting
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"Logo form invalid. Errors: {logo_form.errors.as_json()}")
+                messages.error(request, 'Logo upload failed. Please check the file type/size and try again.')
+                return redirect('core:team_admin')
         elif action == 'remove_logo':
             if team.logo:
                 team.logo.delete(save=False)

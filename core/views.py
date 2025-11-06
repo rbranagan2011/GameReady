@@ -3104,11 +3104,25 @@ def team_admin(request):
                 # Ensure media directory exists before saving
                 from django.conf import settings
                 from pathlib import Path
-                media_root = Path(settings.MEDIA_ROOT)
-                team_logos_dir = media_root / 'team_logos'
+                import os
+                
+                # Get MEDIA_ROOT and ensure it's a string
+                media_root = str(settings.MEDIA_ROOT)
+                team_logos_dir = Path(media_root) / 'team_logos'
                 team_logos_dir.mkdir(parents=True, exist_ok=True)
                 
-                logo_form.save()
+                # Save the form
+                team = logo_form.save()
+                
+                # Verify file was actually saved
+                if team.logo:
+                    file_path = team.logo.path
+                    if not os.path.exists(file_path):
+                        # Log error but don't fail - file might be in different location
+                        import logging
+                        logger = logging.getLogger(__name__)
+                        logger.error(f"Logo file not found at expected path: {file_path}. MEDIA_ROOT: {media_root}")
+                
                 # No success message - smooth UI update
                 return redirect('core:team_admin')
         elif action == 'remove_logo':

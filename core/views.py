@@ -3139,7 +3139,37 @@ def team_admin(request):
                 
                 # Save the form - this should save both the model and the file
                 try:
-                    team = logo_form.save()
+                    # Save the form (this saves the model instance)
+                    team = logo_form.save(commit=False)
+                    
+                    # If a new file was uploaded, explicitly save it
+                    if 'logo' in request.FILES:
+                        # Get the uploaded file
+                        uploaded_file = request.FILES['logo']
+                        
+                        # Generate a safe filename
+                        from django.utils.text import get_valid_filename
+                        import uuid
+                        file_ext = os.path.splitext(uploaded_file.name)[1].lower()
+                        safe_name = get_valid_filename(os.path.splitext(uploaded_file.name)[0])
+                        unique_filename = f"{safe_name}-{uuid.uuid4().hex[:8]}{file_ext}"
+                        
+                        # Set the file path
+                        team.logo.name = f'team_logos/{unique_filename}'
+                        
+                        # Ensure the directory exists
+                        full_path = Path(media_root) / 'team_logos' / unique_filename
+                        full_path.parent.mkdir(parents=True, exist_ok=True)
+                        
+                        # Write the file explicitly
+                        with open(full_path, 'wb+') as destination:
+                            for chunk in uploaded_file.chunks():
+                                destination.write(chunk)
+                        
+                        logger.info(f"File written explicitly to: {full_path}")
+                    
+                    # Now save the model instance
+                    team.save()
                     logger.info(f"Form saved successfully. Team: {team.name}")
                 except Exception as e:
                     logger.error(f"Error saving form: {e}", exc_info=True)

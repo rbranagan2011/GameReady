@@ -46,7 +46,7 @@
         color: #111827;
     }
     .value-good { color: #1B5E20; }
-    .value-warn { color: #0d6efd; }
+    .value-warn { color: #9333EA; }
     .value-bad  { color: #B71C1C; }
     .value-orange { color: #FF8F00; }
 
@@ -59,34 +59,62 @@
         justify-content: center;
     }
 
-    /* Desktop layout: three columns with center stack */
+    /* Desktop layout: 3 columns, 2 rows for better organization */
     @media (min-width: 992px) {
         .summary-grid {
             grid-template-columns: 1fr 1fr 1fr;
-            align-items: start;
+            grid-template-rows: auto auto;
+            align-items: stretch;
         }
-        .place-left { grid-column: 1; }
-        .place-right-top { grid-column: 2; grid-row: 1; }
-        .place-right-bottom { grid-column: 2; grid-row: 2; }
-        .place-center-stack { grid-column: 3; grid-row: 1 / span 2; }
+        /* Row 1: Top three cards */
+        .place-left { 
+            grid-column: 1; 
+            grid-row: 1;
+        }
+        .place-right-top { 
+            grid-column: 2; 
+            grid-row: 1;
+        }
+        .bubble-compliance { 
+            grid-column: 3; 
+            grid-row: 1;
+        }
+        /* Row 2: Bottom three cards - flatten the stack */
+        .place-center-stack { 
+            grid-column: 1 / span 3; 
+            grid-row: 2;
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 12px;
+        }
+        .place-center-stack > .summary-bubble {
+            margin: 0; /* Remove any margins from individual bubbles */
+        }
     }
 
-    /* Mobile layout: first two side-by-side, rest full width */
+    /* Mobile layout: 2 columns with smart stacking */
     @media (max-width: 768px) {
-        .summary-grid { grid-template-columns: 1fr 1fr; }
+        .summary-grid { 
+            grid-template-columns: 1fr 1fr; 
+        }
         /* Flatten the center stack so each child becomes a grid item */
-        .place-center-stack { display: contents; }
-        /* By default, make all items full-width */
-        .summary-grid > * { grid-column: 1 / -1; }
-        /* Except first two, which sit side-by-side */
-        .summary-grid > :nth-child(1),
-        .summary-grid > :nth-child(2) { grid-column: span 1; }
-        /* Row 2 pairing: Above (left) + In (right) */
-        .summary-grid > :nth-child(4) { grid-column: 1; }
-        .summary-grid > :nth-child(5) { grid-column: 2; }
-        /* Row 3 pairing: Below (left) + Compliance (right) */
-        .summary-grid > :nth-child(6) { grid-column: 1; }
-        .bubble-compliance { grid-column: 2; grid-row: 3; }
+        .place-center-stack { 
+            display: contents; 
+        }
+        /* Reset all grid positions for mobile */
+        .summary-grid > * { 
+            grid-column: span 1; 
+            grid-row: auto;
+        }
+        /* First row: Target Range (left) + Team Average (right) */
+        .place-left { grid-column: 1; grid-row: 1; }
+        .place-right-top { grid-column: 2; grid-row: 1; }
+        /* Second row: Compliance (left) + Above Target (right) */
+        .bubble-compliance { grid-column: 1; grid-row: 2; }
+        .place-center-stack > :nth-child(1) { grid-column: 2; grid-row: 2; }
+        /* Third row: In Range (left) + Below Target (right) */
+        .place-center-stack > :nth-child(2) { grid-column: 1; grid-row: 3; }
+        .place-center-stack > :nth-child(3) { grid-column: 2; grid-row: 3; }
     }
     
     .date-nav {
@@ -206,6 +234,74 @@
             min-height: 36px;
             font-size: 12px;
         }
+    }
+
+    /* How does this work button */
+    #openHowLink {
+        width: 100%;
+        padding: 12px 16px;
+        background: #f8f9fa;
+        border: 2px solid #0d6efd;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 14px;
+        color: #0d6efd;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        text-align: center;
+        margin-top: 16px;
+    }
+
+    #openHowLink:hover {
+        background: #0d6efd !important;
+        color: #ffffff !important;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(13, 110, 253, 0.3);
+    }
+
+    #openHowLink:active {
+        transform: translateY(0);
+    }
+
+    /* Floating How it works bubble */
+    #howItWorks {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        z-index: 1100;
+        width: min(520px, 92vw);
+        max-height: 80vh;
+        overflow-y: auto;
+        background: #ffffff;
+        border: 1px solid rgba(0,0,0,0.08);
+        box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+        border-radius: 14px;
+        padding: 14px;
+        display: none;
+    }
+
+    @media (max-width: 768px) {
+        #howItWorks {
+            bottom: 10px;
+            right: 10px;
+            left: 10px;
+            width: auto;
+            max-height: 85vh;
+        }
+    }
+
+    .close-btn {
+        background: transparent;
+        border: none;
+        font-size: 20px;
+        color: #6b7280;
+        cursor: pointer;
+        padding: 6px 10px;
+        transition: color 0.2s ease;
+    }
+
+    .close-btn:hover {
+        color: #1f2937;
     }
 
     .day-type {
@@ -441,7 +537,7 @@
     /* Dynamic coloring based on day's target range */
     .circular-progress .progress-circle.in-range { stroke: #1B5E20; }
     .circular-progress .progress-circle.below { stroke: #FF8F00; }
-    .circular-progress .progress-circle.above { stroke: #0d6efd; }
+    .circular-progress .progress-circle.above { stroke: #9333EA; }
     
     .circular-progress .score-text {
         position: absolute;
@@ -1085,6 +1181,63 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     // initialize indicators
     updateDirIndicators('');
+
+    // How it works bubble: standalone controller and global open/close helpers
+    (function(){
+        const KEY = 'gr_coach_howitworks_seen';
+        const how = document.getElementById('howItWorks');
+        if(!how) return;
+        const hideBtn = document.getElementById('hideHowBtn');
+        const openBtn = document.getElementById('openHowLink');
+        
+        function getCount(){ 
+            try{ 
+                return parseInt(localStorage.getItem(KEY)||'0',10); 
+            }catch(_){ 
+                return 0; 
+            } 
+        }
+        
+        function setCount(v){ 
+            try{ 
+                localStorage.setItem(KEY, String(v)); 
+            }catch(_){} 
+        }
+        
+        function openHow(){ 
+            how.style.display='block'; 
+        }
+        
+        function closeHow(){ 
+            how.style.display='none'; 
+        }
+        
+        // Expose globally for button click
+        window.GR_openHow = openHow;
+        window.GR_closeHow = closeHow;
+        
+        // Show on first visit
+        const seen = getCount();
+        if(seen < 1){ 
+            openHow(); 
+            setCount(seen+1); 
+        }
+        
+        // Close button handler
+        if(hideBtn) {
+            hideBtn.addEventListener('click', function(){ 
+                closeHow(); 
+                setCount(3); 
+            });
+        }
+        
+        // Open button handler
+        if(openBtn) {
+            openBtn.addEventListener('click', function(){ 
+                openHow(); 
+            });
+        }
+    })();
 });
 </script>
 {% endblock %}
@@ -1094,7 +1247,7 @@ document.addEventListener('DOMContentLoaded', function() {
     {% if team %}
         <!-- Header with Page Title and Date Navigation -->
         <div class="header">
-            <div class="page-title" style="font-size:24px; font-weight:700; color:#333; text-align:center; margin-bottom: 10px;">Squad Overview</div>
+            <div class="page-title" style="font-size:24px; font-weight:700; color:#333; text-align:center; margin-bottom: 10px;">{{ team.name }} Overview</div>
             <div class="date-nav">
                 <div class="date-picker">
                     <a href="?date={{ prev_date|date:'Y-m-d' }}" class="date-btn" title="Previous day">
@@ -1108,9 +1261,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     </a>
                 </div>
             </div>
-            {% if day_tag_display %}
-                <div class="day-type" style="text-align:center;">Day Type - {{ day_tag_display }}</div>
-            {% endif %}
+            <div class="day-type" style="text-align:center;">
+                Day Type: <strong>{{ day_tag_display }}</strong>
+                {% if is_using_fallback_range %}
+                    <span style="font-size: 14px; color: #666; font-weight: normal;">(using team default target range)</span>
+                {% endif %}
+            </div>
 
             {% if has_data %}
             <div class="summary-grid">
@@ -1122,7 +1278,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <div class="summary-label">Today's Team Average</div>
                     <div class="summary-value {{ avg_status_class }}">{{ today_team_avg }}%</div>
                 </div>
-                <div class="summary-bubble place-right-bottom bubble-compliance">
+                <div class="summary-bubble bubble-compliance">
                     <div class="summary-label">Today's compliance</div>
                     <div class="summary-value">{{ compliance_pct }}%</div>
                 </div>
@@ -1141,12 +1297,45 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
                 </div>
             </div>
+            <div style="text-align:center; margin: 20px 0;">
+                <button type="button" id="openHowLink">How does this work?</button>
+            </div>
             {% endif %}
             
             
         </div>
 
         {% if has_data %}
+            <!-- Insights Section -->
+            <div class="insights-section">
+                <div class="insights-card">
+                    <h3 class="card-title">Squad Metrics Snapshot</h3>
+                    {% if insights.metrics %}
+                        <div class="insights-grid">
+                            {% for metric in insights.metrics %}
+                            <div class="insight-metric">
+                                <div class="circular-progress" data-score="{{ metric.score }}">
+                                    <svg viewBox="0 0 100 100">
+                                        <circle class="background-circle" cx="50" cy="50" r="30"></circle>
+                                        <circle class="progress-circle {% if metric.score < 5 %}high-risk{% elif metric.score < 7 %}monitor{% else %}good{% endif %}" 
+                                                cx="50" cy="50" r="30" 
+                                                stroke-dasharray="0 188.4" 
+                                                stroke-dashoffset="0"></circle>
+                                    </svg>
+                                    <div class="score-text">{{ metric.score }}</div>
+                                </div>
+                                <div class="insight-metric-name">{{ metric.name }}</div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="empty-state">
+                            <p>No data available for {{ selected_date|date:"F j, Y" }}</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
             <!-- Squad List -->
             <div class="squad-section">
                 <h2 class="section-title">Squad List</h2>
@@ -1164,7 +1353,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         <tr class="{% if player.readiness < 50 %}high-risk-row{% elif player.readiness < 70 %}monitor-row{% elif player.readiness >= 70 %}good-row{% else %}no-data-row{% endif %}"
                             data-name="{{ player.athlete.get_full_name|default:player.athlete.username|lower }}"
                             data-cond="{{ player.readiness|default:'-1' }}"
-                            data-pill-rank="{% if player.pill == 'risk' %}3{% elif player.pill == 'rest' %}2{% elif player.pill == 'non' %}1{% else %}0{% endif %}">
+                            data-pill-rank="{% if player.pill == 'risk' %}4{% elif player.pill == 'rest' %}3{% elif player.pill == 'non' %}2{% elif player.pill == 'mlt' %}1{% else %}0{% endif %}">
                             <td class="inf-cell">
                                 {% if player.pill == 'risk' %}
                                     <span class="mini-pill high-risk inf-pill" data-expl="Below target range 3 consecutive days" title="Below target range 3 consecutive days">risk</span>
@@ -1172,6 +1361,8 @@ document.addEventListener('DOMContentLoaded', function() {
                                     <span class="mini-pill monitor inf-pill" data-expl="High soreness and low energy today" title="High soreness and low energy today">rest</span>
                                 {% elif player.pill == 'non' %}
                                     <span class="mini-pill inf-pill" style="background: #f0f0f0; color:#666; border-color:#e0e0e0;" data-expl="Missed 2 of last 3 days" title="Missed 2 of last 3 days">non</span>
+                                {% elif player.pill == 'mlt' %}
+                                    <span class="mini-pill inf-pill" style="background: #6f42c1; color:#fff; border-color:#5a32a3;" data-expl="Athlete is on multiple teams" title="Athlete is on multiple teams: {% for team in player.teams %}{{ team.name }}{% if not forloop.last %}, {% endif %}{% endfor %}">MLT</span>
                                 {% endif %}
                             </td>
                             <td>
@@ -1220,36 +1411,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     </tbody>
                 </table>
             </div>
-
-            <!-- Insights Section -->
-            <div class="insights-section">
-                <div class="insights-card">
-                    <h3 class="card-title">Squad Condition Snapshot</h3>
-                    {% if insights.metrics %}
-                        <div class="insights-grid">
-                            {% for metric in insights.metrics %}
-                            <div class="insight-metric">
-                                <div class="circular-progress" data-score="{{ metric.score }}">
-                                    <svg viewBox="0 0 100 100">
-                                        <circle class="background-circle" cx="50" cy="50" r="30"></circle>
-                                        <circle class="progress-circle {% if metric.score < 5 %}high-risk{% elif metric.score < 7 %}monitor{% else %}good{% endif %}" 
-                                                cx="50" cy="50" r="30" 
-                                                stroke-dasharray="0 188.4" 
-                                                stroke-dashoffset="0"></circle>
-                                    </svg>
-                                    <div class="score-text">{{ metric.score }}</div>
-                                </div>
-                                <div class="insight-metric-name">{{ metric.name }}</div>
-                            </div>
-                            {% endfor %}
-                        </div>
-                    {% else %}
-                        <div class="empty-state">
-                            <p>No data available for {{ selected_date|date:"F j, Y" }}</p>
-                        </div>
-                    {% endif %}
-                </div>
-            </div>
         {% else %}
             <!-- Empty State -->
             <div class="empty-state">
@@ -1263,6 +1424,27 @@ document.addEventListener('DOMContentLoaded', function() {
             <p>Please contact your administrator to be assigned to a team.</p>
         </div>
     {% endif %}
+</div>
+
+<!-- Floating How it works bubble -->
+<div id="howItWorks">
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+        <div style="font-weight:800; font-size:16px;">Coach Dashboard Guide</div>
+        <button type="button" id="hideHowBtn" class="close-btn">✕</button>
+    </div>
+    <div style="margin-top:8px; color:#374151; font-size:14px; line-height:1.5;">
+        <p style="margin:0 0 8px 0;">Welcome to your <strong>Coach Dashboard</strong>! This is your central hub for monitoring your team's readiness and wellness. Use this guide to make the most of your dashboard.</p>
+        <p style="margin:0 0 8px 0;"><strong>Summary Metrics:</strong> At the top, you'll see key metrics for today including the <strong>Target Recovery Range</strong> (set via tags or team defaults), <strong>Team Average</strong> readiness score, <strong>Compliance</strong> percentage, and counts of athletes above, in, or below target range.</p>
+        <p style="margin:0 0 8px 0;"><strong>Squad Metrics Snapshot:</strong> This section shows average scores across all seven wellness categories (sleep, fatigue, soreness, stress, mood, energy, readiness). These help you identify patterns affecting the entire team.</p>
+        <p style="margin:0 0 8px 0;"><strong>Squad List:</strong> The main table shows each athlete's readiness score for today. <strong>Click any readiness circle</strong> to view their detailed seven-metric breakdown. Color coding indicates:
+            <span style="color:#1B5E20; font-weight:700;"> Green = In target range</span>,
+            <span style="color:#FF8F00; font-weight:700;"> Orange = Below target</span>,
+            <span style="color:#9333EA; font-weight:700;"> Purple = Above target</span>.
+        </p>
+        <p style="margin:0 0 8px 0;"><strong>Info Pills:</strong> Look for colored indicators next to player names: <strong>risk</strong> (below target 3+ days), <strong>rest</strong> (high soreness/low energy), <strong>non</strong> (missed reports), or <strong>MLT</strong> (multiple teams). Click any pill for details.</p>
+        <p style="margin:0 0 8px 0;"><strong>Date Navigation:</strong> Use the arrows to view different days. The <strong>Day Type</strong> shows the tag assigned to the selected date. You can also click player names to view their full dashboard and historical data.</p>
+        <p style="margin:0 0 8px 0;"><strong>Team Management:</strong> Use the navigation menu to access <strong>Team Schedule</strong> (set tags and target ranges), <strong>Tag Management</strong> (create custom day types), and other team settings.</p>
+    </div>
 </div>
 
 <!-- Player Metrics Modal -->

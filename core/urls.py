@@ -8,6 +8,8 @@ urlpatterns = [
     # Registration and onboarding
     path('role-selection/', views.role_selection, name='role_selection'),
     path('signup/', views.signup, name='signup'),
+    path('verify-email/<str:token>/', views.verify_email, name='verify_email'),
+    path('verify-email-pending/', views.verify_email_pending, name='verify_email_pending'),
     path('team-setup/coach/', views.team_setup_coach, name='team_setup_coach'),
     path('athlete-setup/', views.athlete_setup, name='athlete_setup'),
     path('join/<str:code>/', views.join_team_link, name='join_team_link'),
@@ -15,6 +17,7 @@ urlpatterns = [
     path('get-started/<int:step>/', views.get_started, name='get_started'),
     # Existing routes
     path('submit-report/', views.submit_readiness_report, name='submit_report'),
+    path('switch-team/<int:team_id>/', views.switch_team, name='switch_team'),
     path('coach-dashboard/', views.coach_dashboard, name='coach_dashboard'),
     path('coach-dashboard/player-metrics/<int:athlete_id>/', views.player_metrics_ajax, name='player_metrics_ajax'),
     path('player-dashboard/', views.player_dashboard, name='player_dashboard'),
@@ -23,10 +26,13 @@ urlpatterns = [
     path('player-dashboard/status/set/', views.player_set_status, name='player_set_status'),
     path('player-dashboard/weekly/', views.player_week_partial, name='player_week_partial'),
     path('player-dashboard/monthly/', views.player_month_partial, name='player_month_partial'),
+    path('player-dashboard/day-details/', views.player_day_details, name='player_day_details'),
+    path('player-dashboard/personal-label/', views.player_set_personal_label, name='player_set_personal_label'),
     # Coach view of a specific athlete's dashboard + partials
     path('coach/player/<int:athlete_id>/', views.coach_player_dashboard, name='coach_player_dashboard'),
     path('coach/player/<int:athlete_id>/weekly/', views.coach_player_week_partial, name='coach_player_week_partial'),
     path('coach/player/<int:athlete_id>/monthly/', views.coach_player_month_partial, name='coach_player_month_partial'),
+    path('coach/player/<int:athlete_id>/day-details/', views.coach_player_day_details, name='coach_player_day_details'),
     path('athlete/<int:athlete_id>/', views.athlete_detail, name='athlete_detail'),
     path('team-schedule/', views.team_schedule_settings, name='team_schedule_settings'),
     path('team-schedule/monthly/', views.team_schedule_month_partial, name='team_schedule_month_partial'),
@@ -36,4 +42,8 @@ urlpatterns = [
     path('team-tags/delete/<int:tag_id>/', views.team_tag_delete, name='team_tag_delete'),
     # Team Administration
     path('team-admin/', views.team_admin, name='team_admin'),
+    # Feature Request
+    path('feature-request/', views.feature_request, name='feature_request'),
+    # Account Management
+    path('account/', views.account_management, name='account_management'),
 ]

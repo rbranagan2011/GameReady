@@ -1,5 +1,5 @@
-<div class="section" style="font-weight:700;">Monthly Overview</div>
 <div class="section">
+  <div style="font-weight:700; text-align:center; margin-bottom:8px;">Monthly Overview</div>
   <div class="date-nav">
     <div class="date-picker">
       <a href="?month={{ prev_month|date:'Y-m' }}" class="date-btn js-month-nav" data-month="{{ prev_month|date:'Y-m' }}" title="Previous month" aria-label="Previous month" role="button">←</a>
@@ -7,14 +7,28 @@
       <a href="?month={{ next_month|date:'Y-m' }}" class="date-btn js-month-nav" data-month="{{ next_month|date:'Y-m' }}" title="Next month" aria-label="Next month" role="button">→</a>
     </div>
   </div>
-  <div style="display:grid; grid-template-columns: repeat(7, 1fr); gap:8px; text-align:center; color:#6b7280; font-size:12px; margin-bottom:8px;">
-    <div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div><div>Sun</div>
-  </div>
-  <div style="display:grid; grid-template-columns: repeat(7, 1fr); gap:10px;">
+  <div class="month-scroll">
+    <div class="month-head" style="display:grid; grid-template-columns: repeat(7, 1fr); gap:8px; text-align:center; color:#6b7280; font-size:12px; margin-bottom:8px;">
+      <div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div><div>Sun</div>
+    </div>
+    <div class="month-grid" style="display:grid; grid-template-columns: repeat(7, 1fr); gap:10px;">
     {% for c in month_cells %}
-      <div style="min-height:82px; border:1px solid rgba(0,0,0,0.06); border-radius:10px; padding:6px; position:relative; background:#fff;">
+      <div class="month-day-cell {% if c.date %}js-day-details{% endif %}" data-date="{{ c.date_str|default:'' }}" style="min-height:82px; border:1px solid rgba(0,0,0,0.06); border-radius:10px; padding:6px; position:relative; background:#fff; cursor:{% if c.date %}pointer{% else %}default{% endif %}; transition: background 0.2s;">
         {% if c.date %}
-          <div style="position:absolute; top:6px; left:8px; font-size:12px; color:#6b7280;">{{ c.day }}</div>
+          <div style="position:absolute; top:6px; left:8px; font-size:12px; color:#6b7280; font-weight:600;">{{ c.day }}</div>
+          {% if c.day_tags or c.personal_label %}
+            <div style="position:absolute; top:6px; right:6px; display:flex; gap:2px; flex-wrap:wrap; max-width:50%;">
+              {% for team_name, tag_name, tag_color in c.day_tags|slice:":2" %}
+                <span style="display:inline-block; width:6px; height:6px; border-radius:50%; background:{{ tag_color }}; opacity:0.7;" title="{{ team_name }}: {{ tag_name }}"></span>
+              {% endfor %}
+              {% if c.day_tags|length > 2 %}
+                <span style="font-size:8px; color:#999;">+{{ c.day_tags|length|add:"-2" }}</span>
+              {% endif %}
+              {% if c.personal_label %}
+                <span style="font-size:8px; color:#6b7280;" title="Personal: {{ c.personal_label }}">●</span>
+              {% endif %}
+            </div>
+          {% endif %}
           <div style="display:flex; justify-content:center; align-items:center; height:100%;">
             <div class="small-circle clickable" data-date="{{ c.date_str }}" data-score="{{ c.score|default:0 }}" style="width:42px;height:42px;" tabindex="0" role="button" aria-label="View metrics for {{ c.date_str }}">
               <svg viewBox="0 0 100 100">
@@ -27,6 +41,7 @@
         {% endif %}
       </div>
     {% endfor %}
+    </div>
   </div>
 </div>
 

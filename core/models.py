@@ -2,6 +2,7 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.utils import timezone
 from django.core.validators import MinValueValidator, MaxValueValidator
+from datetime import timedelta
 import json
 import string
 import secrets
@@ -22,6 +23,45 @@ class Team(models.Model):
         blank=True,
         null=True,
         help_text="Unique code for joining this team"
+    )
+    
+    # Team branding/logo fields
+    logo = models.ImageField(
+        upload_to='team_logos/',
+        blank=True,
+        null=True,
+        help_text="Team logo for branding"
+    )
+    
+    logo_display_mode = models.CharField(
+        max_length=20,
+        choices=[
+            ('NONE', 'No Logo'),
+            ('HEADER', 'Header Logo Only'),
+            ('BACKGROUND', 'Background Only'),
+            ('BOTH', 'Header + Background'),
+        ],
+        default='NONE',
+        help_text="How to display the team logo"
+    )
+    
+    background_opacity = models.FloatField(
+        default=0.05,
+        validators=[MinValueValidator(0.01), MaxValueValidator(0.5)],
+        help_text="Background logo opacity (0.01-0.5)"
+    )
+    
+    background_position = models.CharField(
+        max_length=20,
+        choices=[
+            ('CENTER', 'Center'),
+            ('TOP_LEFT', 'Top Left'),
+            ('TOP_RIGHT', 'Top Right'),
+            ('BOTTOM_LEFT', 'Bottom Left'),
+            ('BOTTOM_RIGHT', 'Bottom Right'),
+        ],
+        default='CENTER',
+        help_text="Background logo position"
     )
 
     @staticmethod
@@ -82,6 +122,52 @@ class TeamTag(models.Model):
         return f"{self.name} ({self.team.name})"
 
 
+class EmailVerification(models.Model):
+    """
+    Email verification tokens for new user accounts.
+    Tokens expire after 24 hours.
+    """
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='email_verification')
+    token = models.CharField(max_length=64, unique=True, db_index=True)
+    verified = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+
+    @staticmethod
+    def generate_token():
+        """Generate a unique verification token."""
+        return secrets.token_urlsafe(48)
+
+    def save(self, *args, **kwargs):
+        """Auto-generate token and set expiration if not set."""
+        if not self.token:
+            # Ensure uniqueness
+            while True:
+                token = self.generate_token()
+                if not EmailVerification.objects.filter(token=token).exists():
+                    self.token = token
+                    break
+        if not self.expires_at:
+            self.expires_at = timezone.now() + timedelta(hours=24)
+        super().save(*args, **kwargs)
+
+    @property
+    def is_expired(self):
+        """Check if the verification token has expired."""
+        return timezone.now() > self.expires_at
+
+    @property
+    def is_valid(self):
+        """Check if the token is valid (not expired and not already verified)."""
+        return not self.verified and not self.is_expired
+
+    def __str__(self):
+        return f"Email verification for {self.user.email} ({'verified' if self.verified else 'pending'})"
+
+    class Meta:
+        ordering = ['-created_at']
+
+
 class Profile(models.Model):
     """
     Extends the built-in Django User model.
@@ -101,7 +187,13 @@ class Profile(models.Model):
     # The team the user belongs to. Coaches can also belong to a team.
     # 'null=True' and 'blank=True' allow for users (like a super-admin)
     # who might not be on a team.
-    team = models.ForeignKey(Team, on_delete=models.SET_NULL, null=True, blank=True)
+    # NOTE: Keeping team as ForeignKey for backward compatibility and coach's primary team
+    # For athletes, use teams (ManyToMany) to support multiple teams
+    team = models.ForeignKey(Team, on_delete=models.SET_NULL, null=True, blank=True, related_name='primary_members')
+    
+    # Multiple teams support (primarily for athletes)
+    # Athletes can belong to multiple teams; coaches typically have one team
+    teams = models.ManyToManyField(Team, related_name='members', blank=True)
 
     # Player current status (MVP). Stored on Profile for simplicity.
     class PlayerStatus(models.TextChoices):
@@ -117,9 +209,29 @@ class Profile(models.Model):
     )
     status_note = models.CharField(max_length=140, blank=True)
     status_updated_at = models.DateTimeField(auto_now=True)
+    
+    # Timezone for daily reminder scheduling
+    timezone = models.CharField(
+        max_length=50,
+        default='UTC',
+        help_text="User's timezone for daily reminders (e.g., 'America/New_York', 'Europe/London', 'UTC')"
+    )
+    
+    # Daily reminder preference
+    daily_reminder_enabled = models.BooleanField(
+        default=True,
+        help_text="Enable daily reminder emails at 12pm local time"
+    )
 
     def __str__(self):
         return f"{self.user.username} ({self.get_role_display()})"
+    
+    def get_teams(self):
+        """Get all teams for this user. For backward compatibility, includes primary team."""
+        teams_list = list(self.teams.all())
+        if self.team and self.team not in teams_list:
+            teams_list.append(self.team)
+        return teams_list
 
 
 class ReadinessReport(models.Model):
@@ -483,6 +595,26 @@ class TeamSchedule(models.Model):
         if not self.date_overrides:
             self.date_overrides = {}
         super().save(*args, **kwargs)
+
+
+class PlayerPersonalLabel(models.Model):
+    """
+    Personal labels that players can add to their own days.
+    These don't affect target ranges - they're just informational.
+    Coaches can see these to understand player's full schedule.
+    """
+    athlete = models.ForeignKey(User, on_delete=models.CASCADE, related_name='personal_labels')
+    date = models.DateField()
+    label = models.CharField(max_length=100, help_text="Player's personal label for this day (e.g., 'Gym session', 'Personal training')")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ('athlete', 'date')
+        ordering = ['date']
+
+    def __str__(self):
+        return f"{self.athlete.username} - {self.date}: {self.label}"
 
 # Utility methods retained for potential analytics, independent of tags
 class ReadinessStatus:

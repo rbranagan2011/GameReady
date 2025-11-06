@@ -120,6 +120,14 @@
         const dateStr = '{{ today_date_str|default:"" }}';
         if(!dateStr) return;
         
+        // Hide welcome bubble while modal is open (if present)
+        try{
+          const how = document.getElementById('howItWorks');
+          const showBtn = document.getElementById('showHowBtn');
+          if(how){ how.style.display='none'; }
+          if(showBtn){ showBtn.style.display='inline-block'; }
+        }catch(_){ }
+
         // Open modal
         modal.style.display = 'flex';
         setTimeout(()=>{ if(closeBtn) closeBtn.focus(); }, 0);
@@ -165,6 +173,13 @@
     const note = payload.status_note || '{{ status_note|default:"" }}';
     const when = payload.status_updated_at || '';
     sub.textContent = (note ? note : s.replace('_',' ').toLowerCase().replace(/\b\w/g,c=>c.toUpperCase())) + (when? ` · ${when}`:'');
+    // Also update status pill in player header if present
+    try{
+      const pill = document.getElementById('statusOpenPill');
+      const text = document.getElementById('statusOpenCurrent');
+      if(pill){ pill.className = 'badge rounded-pill ' + (statusColors[s]||'text-bg-secondary'); }
+      if(text){ text.textContent = s; }
+    }catch(_){}
   }
 
   function fetchStatus(){

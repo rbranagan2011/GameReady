@@ -1,6 +1,7 @@
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 from django.contrib.auth.models import User
 from django.utils import timezone
+from django.conf import settings
 from datetime import timedelta
 import random
 from core.models import Team, Profile, ReadinessReport
@@ -15,8 +16,30 @@ class Command(BaseCommand):
             action='store_true',
             help='Clear existing data before creating sample data',
         )
+        parser.add_argument(
+            '--force',
+            action='store_true',
+            help='Force creation even in production (use with extreme caution)',
+        )
 
     def handle(self, *args, **options):
+        # Security check: prevent running in production unless forced
+        if not settings.DEBUG and not options['force']:
+            raise CommandError(
+                'This command is disabled in production for security reasons.\n'
+                'Test accounts with simple passwords should not be created in production.\n'
+                'If you really need to run this in production, use --force flag.\n'
+                'WARNING: Using --force will create accounts with weak passwords!'
+            )
+        
+        if options['force']:
+            self.stdout.write(
+                self.style.WARNING(
+                    'WARNING: Running in production mode with --force flag.\n'
+                    'This will create accounts with weak passwords (coach123/athlete123).\n'
+                    'These should be changed immediately after creation!'
+                )
+            )
         if options['clear']:
             self.stdout.write('Clearing existing data...')
             ReadinessReport.objects.all().delete()
@@ -29,8 +52,10 @@ class Command(BaseCommand):
         # Create teams
         team1 = Team.objects.create(name="Thunder Basketball")
         team2 = Team.objects.create(name="Lightning Soccer")
+        # Create a new team for multi-team testing
+        team3 = Team.objects.create(name="Eagles Football")
         
-        self.stdout.write(f'Created teams: {team1.name}, {team2.name}')
+        self.stdout.write(f'Created teams: {team1.name}, {team2.name}, {team3.name}')
 
         # Create coach
         coach = User.objects.create_user(
@@ -41,7 +66,10 @@ class Command(BaseCommand):
             last_name='Smith'
         )
         coach.profile.role = Profile.Role.COACH
+        # Set primary team
         coach.profile.team = team1
+        # Add to teams ManyToMany (will add both teams later)
+        coach.profile.teams.add(team1)
         coach.profile.save()
 
         self.stdout.write(f'Created coach: {coach.get_full_name()}')
@@ -65,6 +93,7 @@ class Command(BaseCommand):
             )
             user.profile.role = Profile.Role.ATHLETE
             user.profile.team = team1
+            user.profile.teams.add(team1)  # Add to ManyToMany for consistency
             user.profile.save()
 
         # Create athletes for team 2
@@ -84,10 +113,65 @@ class Command(BaseCommand):
             )
             user.profile.role = Profile.Role.ATHLETE
             user.profile.team = team2
+            user.profile.teams.add(team2)  # Add to ManyToMany for consistency
             user.profile.save()
 
         self.stdout.write(f'Created {len(athletes_team1)} athletes for {team1.name}')
         self.stdout.write(f'Created {len(athletes_team2)} athletes for {team2.name}')
+        
+        # Create 20 athletes for the new team (Eagles Football)
+        athletes_team3_names = [
+            ('chris_anderson', 'Chris', 'Anderson', 'chris.a@example.com'),
+            ('jordan_miller', 'Jordan', 'Miller', 'jordan.m@example.com'),
+            ('taylor_wright', 'Taylor', 'Wright', 'taylor.w@example.com'),
+            ('morgan_lee', 'Morgan', 'Lee', 'morgan.l@example.com'),
+            ('cameron_hall', 'Cameron', 'Hall', 'cameron.h@example.com'),
+            ('riley_young', 'Riley', 'Young', 'riley.y@example.com'),
+            ('casey_martin', 'Casey', 'Martin', 'casey.m@example.com'),
+            ('dakota_thomas', 'Dakota', 'Thomas', 'dakota.t@example.com'),
+            ('skyler_harris', 'Skyler', 'Harris', 'skyler.h@example.com'),
+            ('quinn_clark', 'Quinn', 'Clark', 'quinn.c@example.com'),
+            ('avery_lewis', 'Avery', 'Lewis', 'avery.l@example.com'),
+            ('hayden_walker', 'Hayden', 'Walker', 'hayden.w@example.com'),
+            ('parker_allen', 'Parker', 'Allen', 'parker.a@example.com'),
+            ('blake_king', 'Blake', 'King', 'blake.k@example.com'),
+            ('sage_wright', 'Sage', 'Wright', 'sage.w@example.com'),
+            ('rowan_scott', 'Rowan', 'Scott', 'rowan.s@example.com'),
+            ('finley_green', 'Finley', 'Green', 'finley.g@example.com'),
+            ('rivers_adams', 'Rivers', 'Adams', 'rivers.a@example.com'),
+            ('phoenix_baker', 'Phoenix', 'Baker', 'phoenix.b@example.com'),
+            ('indigo_nelson', 'Indigo', 'Nelson', 'indigo.n@example.com'),
+        ]
+        
+        athletes_team3_users = []
+        for username, first_name, last_name, email in athletes_team3_names:
+            user = User.objects.create_user(
+                username=username,
+                email=email,
+                password='athlete123',
+                first_name=first_name,
+                last_name=last_name
+            )
+            user.profile.role = Profile.Role.ATHLETE
+            user.profile.team = team3
+            user.profile.teams.add(team3)  # Add to ManyToMany for consistency
+            user.profile.save()
+            athletes_team3_users.append(user)
+        
+        self.stdout.write(f'Created {len(athletes_team3_names)} athletes for {team3.name}')
+        
+        # Make coach a coach of the new team too (multi-team support)
+        coach.profile.teams.add(team3)
+        coach.profile.save()
+        self.stdout.write(f'Added coach to {team3.name} (multi-team support)')
+        
+        # Add 1-2 Thunder Basketball athletes to Eagles Football (cross-team athletes)
+        # Get first two athletes from team1
+        team1_athletes = User.objects.filter(profile__team=team1, profile__role=Profile.Role.ATHLETE)[:2]
+        for athlete in team1_athletes:
+            athlete.profile.teams.add(team3)
+            athlete.profile.save()
+            self.stdout.write(f'Added {athlete.get_full_name()} to both {team1.name} and {team3.name}')
 
         # Create historical reports (last 14 days)
         today = timezone.now().date()

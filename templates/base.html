@@ -34,6 +34,94 @@
         .dropdown-item button:hover {
             background-color: rgba(0,0,0,.1);
         }
+        
+        /* Enhanced confirmation/submit button style matching login button */
+        /* Targets all primary submit buttons (main action buttons) */
+        button.btn-primary[type="submit"]:not(.btn-sm):not(.btn-outline-primary),
+        .btn.btn-primary.btn-lg[type="submit"],
+        .btn-primary.btn-lg[type="submit"],
+        .btn-confirm,
+        .btn-submit {
+            padding: 16px;
+            font-size: 1.5rem;
+            font-weight: 500;
+            border-radius: 12px;
+            background: #0d6efd;
+            border: none;
+            color: white;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(13, 110, 253, 0.3);
+        }
+        
+        button.btn-primary[type="submit"]:not(.btn-sm):not(.btn-outline-primary):hover,
+        .btn.btn-primary.btn-lg[type="submit"]:hover,
+        .btn-primary.btn-lg[type="submit"]:hover,
+        .btn-confirm:hover,
+        .btn-submit:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(13, 110, 253, 0.4);
+            background: #0b5ed7;
+            color: white;
+        }
+        
+        /* For success buttons (confirmations that use success style) */
+        button.btn-success.btn-lg[type="submit"]:not(.btn-sm):not(.btn-outline-success),
+        .btn-success.btn-lg[type="submit"] {
+            padding: 16px;
+            font-size: 1.5rem;
+            font-weight: 500;
+            border-radius: 12px;
+            background: #198754;
+            border: none;
+            color: white;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(25, 135, 84, 0.3);
+        }
+        
+        button.btn-success.btn-lg[type="submit"]:not(.btn-sm):not(.btn-outline-success):hover,
+        .btn-success.btn-lg[type="submit"]:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(25, 135, 84, 0.4);
+            background: #157347;
+            color: white;
+        }
+        
+        {% if user.is_authenticated and coach_active_team and coach_active_team.logo and coach_active_team.logo_display_mode != 'NONE' %}
+            {% if coach_active_team.logo_display_mode == 'BACKGROUND' or coach_active_team.logo_display_mode == 'BOTH' %}
+                body {
+                    position: relative;
+                }
+                
+                body::before {
+                    content: '';
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background-image: url('{{ coach_active_team.logo.url }}');
+                    background-repeat: no-repeat;
+                    {% if coach_active_team.background_position == 'CENTER' %}
+                        background-position: center;
+                    {% elif coach_active_team.background_position == 'TOP_LEFT' %}
+                        background-position: top left;
+                    {% elif coach_active_team.background_position == 'TOP_RIGHT' %}
+                        background-position: top right;
+                    {% elif coach_active_team.background_position == 'BOTTOM_LEFT' %}
+                        background-position: bottom left;
+                    {% elif coach_active_team.background_position == 'BOTTOM_RIGHT' %}
+                        background-position: bottom right;
+                    {% else %}
+                        background-position: center;
+                    {% endif %}
+                    background-attachment: fixed;
+                    background-size: contain;
+                    opacity: {{ coach_active_team.background_opacity }};
+                    z-index: -1;
+                    pointer-events: none;
+                }
+            {% endif %}
+        {% endif %}
     </style>
     
     {% block extra_css %}{% endblock %}
@@ -42,8 +130,14 @@
     <!-- Navigation -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
         <div class="container">
-            <a class="navbar-brand" href="{% url 'core:home' %}">
-                GameReady
+            <a class="navbar-brand d-flex align-items-center" href="{% url 'core:home' %}">
+                {% if user.is_authenticated and coach_active_team and coach_active_team.logo and coach_active_team.logo_display_mode != 'NONE' %}
+                    {% if coach_active_team.logo_display_mode == 'HEADER' or coach_active_team.logo_display_mode == 'BOTH' %}
+                        <img src="{{ coach_active_team.logo.url }}" alt="{{ coach_active_team.name }}" 
+                             style="max-height: 40px; max-width: 120px; margin-right: 10px; object-fit: contain;">
+                    {% endif %}
+                {% endif %}
+                <span>GameReady</span>
             </a>
             
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
@@ -54,6 +148,37 @@
                 <ul class="navbar-nav me-auto">
                     {% if user.is_authenticated %}
                         {% if user.profile.role == 'COACH' %}
+                            {% if has_multiple_teams %}
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                                    <i class="bi bi-people"></i> 
+                                    {% if coach_active_team %}
+                                        {{ coach_active_team.name }}
+                                    {% else %}
+                                        Select Team
+                                    {% endif %}
+                                </a>
+                                <ul class="dropdown-menu">
+                                    {% for team in coach_teams %}
+                                        <li>
+                                            <a class="dropdown-item {% if coach_active_team.id == team.id %}active{% endif %}" 
+                                               href="{% url 'core:switch_team' team.id %}">
+                                                {% if coach_active_team.id == team.id %}
+                                                    <i class="bi bi-check-circle"></i>
+                                                {% endif %}
+                                                {{ team.name }}
+                                            </a>
+                                        </li>
+                                    {% endfor %}
+                                </ul>
+                            </li>
+                            {% elif coach_active_team %}
+                            <li class="nav-item">
+                                <span class="nav-link">
+                                    <i class="bi bi-people"></i> {{ coach_active_team.name }}
+                                </span>
+                            </li>
+                            {% endif %}
                             <li class="nav-item">
                                 <a class="nav-link" href="{% url 'core:coach_dashboard' %}">
                                     Squad Overview
@@ -70,6 +195,11 @@
                                 </a>
                             </li>
                         {% endif %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'core:feature_request' %}">
+                                <i class="bi bi-lightbulb"></i> Feature Request
+                            </a>
+                        </li>
                     {% endif %}
                 </ul>
                 
@@ -81,10 +211,17 @@
                             </a>
                             <ul class="dropdown-menu">
                                 <li><span class="dropdown-item-text">{{ user.profile.get_role_display }}</span></li>
-                                {% if user.profile.team %}
+                                {% if user.profile.role == 'COACH' and coach_active_team %}
+                                    <li><span class="dropdown-item-text">{{ coach_active_team.name }}</span></li>
+                                {% elif user.profile.team %}
                                     <li><span class="dropdown-item-text">{{ user.profile.team.name }}</span></li>
                                 {% endif %}
                                 <li><hr class="dropdown-divider"></li>
+                                <li>
+                                    <a class="dropdown-item" href="{% url 'core:account_management' %}">
+                                        <i class="bi bi-gear"></i> Account Settings
+                                    </a>
+                                </li>
                                 <li>
                                     <form method="post" action="{% url 'logout' %}" class="d-inline">
                                         {% csrf_token %}
@@ -111,10 +248,13 @@
     {% if messages %}
         <div class="container mt-3">
             {% for message in messages %}
-                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
-                    {{ message }}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>
+                {% comment %} Hide all success messages - app should flow smoothly without confirmation boxes {% endcomment %}
+                {% if message.tags != 'success' %}
+                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endif %}
             {% endfor %}
         </div>
     {% endif %}

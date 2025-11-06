@@ -31,7 +31,7 @@
             {% endfor %}
         {% endif %}
 
-        {% if day_tags %}
+        {% if day_tags or example_tags %}
             <div class="tag-grid">
                 {% for tag in day_tags %}
                     <div class="tag-bubble clickable"
@@ -55,6 +55,30 @@
                         <div class="tag-bubble-actions"></div>
                     </div>
                 {% endfor %}
+                
+                {% if example_tags %}
+                    {% for example in example_tags %}
+                        <div class="tag-bubble example-tag-bubble">
+                            <div class="tag-bubble-header">
+                                <span class="color-dot" style="background-color: {{ example.color }}; opacity: 0.6;"></span>
+                                <span class="tag-name" style="color: #6b7280;">{{ example.name }}</span>
+                            </div>
+                            <div class="tag-bubble-range">
+                                <div class="range-label" style="color: #9ca3af;">Target Range</div>
+                                <div class="range-value" style="color: #6b7280;">{{ example.target_min }}–{{ example.target_max }}%</div>
+                            </div>
+                            <div class="tag-bubble-actions">
+                                <button type="button" 
+                                        class="btn btn-outline-secondary btn-sm w-100 quick-add-tag-btn" 
+                                        style="font-size: 12px;"
+                                        data-example-name="{{ example.name }}">
+                                    <i class="bi bi-plus-circle"></i> Quick Add
+                                </button>
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+                
                 <!-- Add New Tag bubble -->
                 <div class="tag-bubble add-new clickable" id="addTagBubble">
                     <div class="add-inner">
@@ -65,7 +89,7 @@
             </div>
         {% else %}
             <div class="text-center py-5">
-                <i class="bi bi-tags fa-3x text-muted mb-3"></i>
+                <i class="bi bi-tags fa-3x text-muted mb-3" style="font-size: 3rem;"></i>
                 <h4 class="text-muted">No Tags Yet</h4>
                 <p class="text-muted">Create your first team tag to get started with customizing your team's schedule.</p>
                 <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createTagModal">
@@ -352,15 +376,53 @@
 
 /* Small circular readiness indicator shown in calendar cells */
 /* Replace filled circles with ring-style progress (like coach dashboard) */
-.ts-progress { position: relative; width: 28px; height: 28px; }
-.ts-progress svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.ts-progress { 
+    position: relative; 
+    width: 40px; 
+    height: 40px;
+    /* 3D effect styling */
+    box-shadow: 0 4px 12px rgba(0,0,0,0.12), 0 2px 4px rgba(0,0,0,0.08), 
+                inset 0 1px 2px rgba(255,255,255,0.4), inset 0 -1px 2px rgba(0,0,0,0.1);
+    border: 2px solid rgba(255,255,255,0.8);
+    background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.5), rgba(255,255,255,0.1));
+    border-radius: 50%;
+    overflow: visible;
+}
+
+.ts-progress::before {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, rgba(255,255,255,0.3) 0%, rgba(0,0,0,0.1) 100%);
+    z-index: -1;
+    opacity: 0.6;
+}
+
+.ts-progress svg { 
+    width: 100%; 
+    height: 100%; 
+    transform: rotate(-90deg);
+    filter: drop-shadow(0 1px 2px rgba(0,0,0,0.15));
+}
+
 .ts-progress .background-circle { fill: none; stroke: #e0e0e0; stroke-width: 6; }
 .ts-progress .progress-circle { fill: none; stroke-width: 6; stroke-linecap: round; transition: stroke-dasharray .6s ease; }
-.ts-progress .score-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 10px; font-weight: 700; color: #333; line-height: 1; }
+.ts-progress .score-text { 
+    position: absolute; 
+    top: 50%; 
+    left: 50%; 
+    transform: translate(-50%, -50%); 
+    font-size: 14px; 
+    font-weight: 700; 
+    color: #333; 
+    line-height: 1;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.1), 0 1px 1px rgba(255,255,255,0.3);
+}
 /* Dynamic colors to mirror coach dashboard rules */
 .ts-progress .progress-circle.in-range { stroke: #1B5E20; }
 .ts-progress .progress-circle.below { stroke: #FF8F00; }
-.ts-progress .progress-circle.above { stroke: #0d6efd; }
+.ts-progress .progress-circle.above { stroke: #9333EA; }
 .ts-progress .progress-circle.neutral { stroke: #9E9E9E; }
 
 /* Mobile optimizations */
@@ -370,7 +432,14 @@
   .calendar-day { min-height: 64px; padding: 0.35rem; }
   .day-number { font-size: 0.7rem; }
   .day-tag .badge { font-size: 0.6rem; padding: 0.18rem 0.35rem; }
-  .score-circle { width: 22px; height: 22px; font-size: 0.65rem; }
+  .ts-progress { 
+    width: 36px; 
+    height: 36px;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.1), 0 1px 3px rgba(0,0,0,0.06), 
+                inset 0 1px 2px rgba(255,255,255,0.3), inset 0 -1px 2px rgba(0,0,0,0.08);
+    border-width: 1.5px;
+  }
+  .ts-progress .score-text { font-size: 12px; }
 }
 </style>
 
@@ -464,47 +533,85 @@ function openDayModal(evt, dateStr, weekday, currentTag) {
     modal.show();
 }
 
-// Handle day tag selection
-document.querySelectorAll('.day-tag-option').forEach(option => {
-    option.addEventListener('click', function() {
-        const tag = this.dataset.tag;
-        const tagName = this.dataset.name;
-        const tagColor = this.dataset.color;
-        const date = this.dataset.date;
-        
-        // Update the schedule via AJAX
-        fetch('{% url "core:team_schedule_settings" %}', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest',
-                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
-            },
-            body: JSON.stringify({
-                date: date,
-                day_tag: tag
-            })
+// Function to handle day tag option click
+function handleDayTagOptionClick() {
+    const tag = this.dataset.tag;
+    const tagName = this.dataset.name;
+    const tagColor = this.dataset.color;
+    const date = this.dataset.date;
+    
+    // Update the schedule via AJAX
+    fetch('{% url "core:team_schedule_settings" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        },
+        body: JSON.stringify({
+            date: date,
+            day_tag: tag
         })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                // Update the calendar display
-                updateCalendarDay(date, tag, tagName, tagColor);
-                
-                // Close the modal
-                bootstrap.Modal.getInstance(document.getElementById('dayModal')).hide();
-                
-                // Show success message
-                showToast('Schedule updated successfully!', 'success');
-            } else {
-                showToast('Error updating schedule: ' + data.message, 'error');
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            showToast('Error updating schedule', 'error');
-        });
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Update the calendar display
+            updateCalendarDay(date, tag, tagName, tagColor);
+            
+            // Close the modal - smooth, no message
+            bootstrap.Modal.getInstance(document.getElementById('dayModal')).hide();
+        } else {
+            showToast('Error updating schedule: ' + data.message, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast('Error updating schedule', 'error');
     });
+}
+
+// Function to add a new tag option to the day modal
+function addTagToDayModal(tag) {
+    const listGroup = document.querySelector('#dayModal .list-group');
+    if (!listGroup) return;
+    
+    // Check if tag already exists in modal
+    const existingOption = listGroup.querySelector(`[data-tag="${tag.id}"]`);
+    if (existingOption) return; // Already exists, skip
+    
+    // Find the "Clear Tag" button (last item) to insert before it
+    const clearTagButton = listGroup.querySelector('.day-tag-option[data-tag=""]');
+    
+    // Create new tag option button
+    const newOption = document.createElement('button');
+    newOption.type = 'button';
+    newOption.className = 'list-group-item list-group-item-action day-tag-option';
+    newOption.setAttribute('data-tag', tag.id);
+    newOption.setAttribute('data-name', tag.name);
+    newOption.setAttribute('data-color', tag.color);
+    newOption.setAttribute('data-weekday', '');
+    newOption.innerHTML = `
+        <div class="d-flex align-items-center gap-2">
+            <span class="badge" style="background-color: ${tag.color}; color:#fff;">${tag.name}</span>
+            <small class="text-muted">Range: ${tag.target_min}-${tag.target_max}%</small>
+        </div>
+    `;
+    
+    // Wire up click handler
+    newOption.addEventListener('click', handleDayTagOptionClick);
+    
+    // Insert before the "Clear Tag" button, or append if not found
+    if (clearTagButton) {
+        listGroup.insertBefore(newOption, clearTagButton);
+    } else {
+        listGroup.appendChild(newOption);
+    }
+}
+
+// Handle day tag selection - bind to existing options
+document.querySelectorAll('.day-tag-option').forEach(option => {
+    option.addEventListener('click', handleDayTagOptionClick);
 });
 
 function updateCalendarDay(dateStr, tagId, tagName, tagColor) {
@@ -691,6 +798,129 @@ document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('[data-bs-target="#createTagModal"]').forEach(button => {
         button.addEventListener('click', openCreateModalWithAnchor);
     });
+    
+    // Handle Quick Add button clicks for example tags
+    document.querySelectorAll('.quick-add-tag-btn').forEach(button => {
+        button.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const exampleName = this.dataset.exampleName;
+            const exampleBubble = this.closest('.example-tag-bubble');
+            
+            // Disable button during request
+            this.disabled = true;
+            this.innerHTML = '<i class="bi bi-hourglass-split"></i> Adding...';
+            
+            // Submit via AJAX
+            const formData = new FormData();
+            formData.append('example_name', exampleName);
+            
+            fetch('{% url "core:team_tag_create" %}', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.tag) {
+                    // Transform example bubble into real tag bubble
+                    const tag = data.tag;
+                    exampleBubble.classList.remove('example-tag-bubble');
+                    exampleBubble.classList.add('clickable');
+                    exampleBubble.setAttribute('data-tag-id', tag.id);
+                    exampleBubble.setAttribute('data-tag-name', tag.name);
+                    exampleBubble.setAttribute('data-tag-target-min', tag.target_min);
+                    exampleBubble.setAttribute('data-tag-target-max', tag.target_max);
+                    exampleBubble.setAttribute('data-tag-color', tag.color);
+                    
+                    // Update color dot
+                    const colorDot = exampleBubble.querySelector('.color-dot');
+                    if (colorDot) {
+                        colorDot.style.backgroundColor = tag.color;
+                        colorDot.style.opacity = '1';
+                    }
+                    
+                    // Update tag name
+                    const tagName = exampleBubble.querySelector('.tag-name');
+                    if (tagName) {
+                        tagName.textContent = tag.name;
+                        tagName.style.color = '';
+                    }
+                    
+                    // Update range labels and values
+                    const rangeLabel = exampleBubble.querySelector('.range-label');
+                    if (rangeLabel) {
+                        rangeLabel.style.color = '';
+                    }
+                    const rangeValue = exampleBubble.querySelector('.range-value');
+                    if (rangeValue) {
+                        rangeValue.textContent = `${tag.target_min}–${tag.target_max}%`;
+                        rangeValue.style.color = '';
+                    }
+                    
+                    // Replace actions with delete button
+                    const actionsDiv = exampleBubble.querySelector('.tag-bubble-actions');
+                    if (actionsDiv) {
+                        actionsDiv.innerHTML = '';
+                    }
+                    
+                    // Add delete button to header area (like real tags)
+                    const headerDiv = exampleBubble.querySelector('.tag-bubble-header');
+                    if (headerDiv) {
+                        const deleteBtn = document.createElement('button');
+                        deleteBtn.type = 'button';
+                        deleteBtn.className = 'delete-tag-btn delete-icon';
+                        deleteBtn.title = 'Delete';
+                        deleteBtn.setAttribute('data-tag-id', tag.id);
+                        deleteBtn.setAttribute('data-tag-name', tag.name);
+                        deleteBtn.innerHTML = '<i class="bi bi-trash"></i>';
+                        exampleBubble.insertBefore(deleteBtn, headerDiv);
+                    }
+                    
+                    // Wire up click handler for edit
+                    exampleBubble.addEventListener('click', function(e) {
+                        if (e.target.closest('.delete-tag-btn')) return;
+                        exampleBubble.classList.add('pop');
+                        setTimeout(() => { exampleBubble.classList.remove('pop'); }, 150);
+                        openEditTagModalFromData(exampleBubble, e);
+                    });
+                    
+                    // Wire up delete button handler
+                    const deleteBtn = exampleBubble.querySelector('.delete-tag-btn');
+                    if (deleteBtn) {
+                        deleteBtn.addEventListener('click', function(e) {
+                            e.stopPropagation();
+                            deleteTagId = this.dataset.tagId;
+                            document.getElementById('deleteTagName').textContent = tag.name;
+                            deleteTagModalInstance.show();
+                        });
+                    }
+                    
+                    // Add the new tag to the day modal so it's immediately available
+                    addTagToDayModal(tag);
+                } else {
+                    // Error - restore button
+                    this.disabled = false;
+                    this.innerHTML = '<i class="bi bi-plus-circle"></i> Quick Add';
+                    if (data.message) {
+                        showToast(data.message, 'error');
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                // Restore button on error
+                this.disabled = false;
+                this.innerHTML = '<i class="bi bi-plus-circle"></i> Quick Add';
+                showToast('Error adding tag', 'error');
+            });
+        });
+    });
+    
     // Wire the add bubble
     const addBubble = document.getElementById('addTagBubble');
     if (addBubble) {
@@ -730,9 +960,8 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(data => {
             if (data.success) {
                 deleteTagModalInstance.hide();
-                showToast('Tag deleted successfully', 'success');
-                // Refresh to update tags and schedule options
-                setTimeout(() => location.reload(), 600);
+                // Refresh to update tags and schedule options - smooth, no message
+                location.reload();
             } else {
                 showToast(data.message || 'Failed to delete tag', 'error');
             }
@@ -788,9 +1017,8 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(data => {
             if (data.success) {
                 editTagModal.hide();
-                showToast('Tag updated successfully!', 'success');
-                // Reload the page to show updated tags
-                setTimeout(() => location.reload(), 1000);
+                // Reload the page to show updated tags - smooth, no message
+                location.reload();
             } else {
                 showEditTagErrors(data.errors || {});
             }
@@ -827,9 +1055,8 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(data => {
             if (data.success) {
                 createTagModal.hide();
-                showToast('Tag created successfully!', 'success');
-                // Reload the page to show new tag
-                setTimeout(() => location.reload(), 1000);
+                // Reload the page to show new tag - smooth, no message
+                location.reload();
             } else {
                 showCreateTagErrors(data.errors || {});
             }
@@ -1089,6 +1316,59 @@ document.addEventListener('DOMContentLoaded', function() {
     font-size: 12px;
     color: #0d6efd;
     opacity: 0.9;
+}
+
+/* Example tag bubble styles - greyed out but with solid background for contrast */
+.tag-bubble.example-tag-bubble {
+    opacity: 1; /* Full opacity for better contrast */
+    border-style: dashed;
+    border-color: #adb5bd;
+    border-width: 2px;
+    background-color: #ffffff; /* Solid white background to block background logo */
+    cursor: default;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08); /* Subtle shadow for separation */
+    backdrop-filter: blur(10px); /* Blur effect to separate from background */
+    -webkit-backdrop-filter: blur(10px); /* Safari support */
+}
+
+.tag-bubble.example-tag-bubble:hover {
+    border-color: #6c757d;
+    background-color: #ffffff;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12); /* Stronger shadow on hover */
+}
+
+.tag-bubble.example-tag-bubble .tag-bubble-actions {
+    margin-top: 8px;
+}
+
+/* Improve text contrast in example tags */
+.tag-bubble.example-tag-bubble .tag-name {
+    color: #4b5563 !important; /* Darker grey for better contrast */
+    font-weight: 600;
+}
+
+.tag-bubble.example-tag-bubble .range-label {
+    color: #6b7280 !important; /* Medium grey, more visible */
+}
+
+.tag-bubble.example-tag-bubble .range-value {
+    color: #374151 !important; /* Darker grey for better readability */
+    font-weight: 700;
+}
+
+/* Style Quick Add button for better visibility */
+.tag-bubble.example-tag-bubble .quick-add-tag-btn {
+    background-color: #ffffff !important;
+    border-color: #6b7280 !important;
+    border-width: 1.5px !important;
+    color: #4b5563 !important;
+    font-weight: 500;
+}
+
+.tag-bubble.example-tag-bubble .quick-add-tag-btn:hover {
+    background-color: #f3f4f6 !important;
+    border-color: #374151 !important;
+    color: #111827 !important;
 }
 
 /* Prevent accidental re-open on backdrop click by disabling underlying grid clicks while a modal is open */

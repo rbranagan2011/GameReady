@@ -16,6 +16,106 @@
         <div class="col-md-6">
             <div class="card border-primary">
                 <div class="card-header bg-primary text-white fw-semibold">
+                    <i class="bi bi-image"></i> Team Branding
+                </div>
+                <div class="card-body">
+                    <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="update_logo">
+                        
+                        <!-- Current Logo Preview -->
+                        {% if team.logo %}
+                            <div class="mb-3 text-center">
+                                <img src="{{ team.logo.url }}" alt="Team Logo" 
+                                     class="img-thumbnail" style="max-height: 150px; max-width: 100%;">
+                                <div class="mt-2">
+                                    <button type="submit" name="action" value="remove_logo" 
+                                            class="btn btn-sm btn-outline-danger">
+                                        <i class="bi bi-trash"></i> Remove Logo
+                                    </button>
+                                </div>
+                            </div>
+                        {% endif %}
+                        
+                        <!-- Upload Logo -->
+                        <div class="mb-3">
+                            <label for="{{ logo_form.logo.id_for_label }}" class="form-label fw-semibold">
+                                Upload Logo
+                            </label>
+                            {{ logo_form.logo }}
+                            {% if logo_form.logo.errors %}
+                                <div class="text-danger small">
+                                    {% for error in logo_form.logo.errors %}
+                                        <div>{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <small class="text-muted d-block mt-1">
+                                PNG, JPG, or SVG. Max 5MB. Recommended: 200x200px or larger.
+                            </small>
+                        </div>
+                        
+                        <!-- Display Mode -->
+                        <div class="mb-3">
+                            <label for="{{ logo_form.logo_display_mode.id_for_label }}" class="form-label fw-semibold">
+                                Display Mode
+                            </label>
+                            {{ logo_form.logo_display_mode }}
+                            {% if logo_form.logo_display_mode.errors %}
+                                <div class="text-danger small">
+                                    {% for error in logo_form.logo_display_mode.errors %}
+                                        <div>{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <small class="text-muted d-block mt-1">
+                                Choose how the logo appears on team pages
+                            </small>
+                        </div>
+                        
+                        <!-- Background Settings (only show if background is selected) -->
+                        <div id="backgroundSettings" style="display: none;">
+                            <div class="mb-3">
+                                <label for="{{ logo_form.background_opacity.id_for_label }}" class="form-label fw-semibold">
+                                    Background Opacity
+                                    <span id="opacityValue">({{ team.background_opacity|default:0.05|floatformat:2 }})</span>
+                                </label>
+                                {{ logo_form.background_opacity }}
+                                {% if logo_form.background_opacity.errors %}
+                                    <div class="text-danger small">
+                                        {% for error in logo_form.background_opacity.errors %}
+                                            <div>{{ error }}</div>
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="{{ logo_form.background_position.id_for_label }}" class="form-label fw-semibold">
+                                    Background Position
+                                </label>
+                                {{ logo_form.background_position }}
+                                {% if logo_form.background_position.errors %}
+                                    <div class="text-danger small">
+                                        {% for error in logo_form.background_position.errors %}
+                                            <div>{{ error }}</div>
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="bi bi-save"></i> Save Branding Settings
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card border-primary">
+                <div class="card-header bg-primary text-white fw-semibold">
                     <i class="bi bi-share"></i> Share Team
                 </div>
                 <div class="card-body">
@@ -167,6 +267,36 @@ function copyToClipboard(elementId, button) {
     }
 }
 
+// Logo branding settings
+document.addEventListener('DOMContentLoaded', function() {
+    const displayMode = document.getElementById('{{ logo_form.logo_display_mode.id_for_label }}');
+    const backgroundSettings = document.getElementById('backgroundSettings');
+    const opacitySlider = document.getElementById('{{ logo_form.background_opacity.id_for_label }}');
+    const opacityValue = document.getElementById('opacityValue');
+    
+    function updateBackgroundSettings() {
+        if (displayMode && backgroundSettings) {
+            const mode = displayMode.value;
+            if (mode === 'BACKGROUND' || mode === 'BOTH') {
+                backgroundSettings.style.display = 'block';
+            } else {
+                backgroundSettings.style.display = 'none';
+            }
+        }
+    }
+    
+    if (displayMode) {
+        displayMode.addEventListener('change', updateBackgroundSettings);
+        updateBackgroundSettings(); // Initial state
+    }
+    
+    // Update opacity display value
+    if (opacitySlider && opacityValue) {
+        opacitySlider.addEventListener('input', function() {
+            opacityValue.textContent = '(' + parseFloat(this.value).toFixed(2) + ')';
+        });
+    }
+});
 </script>
 {% endblock %}
 

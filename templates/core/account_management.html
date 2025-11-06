@@ -1,0 +1,220 @@
+{% extends 'base.html' %}
+{% block title %}Account Management - GameReady{% endblock %}
+
+{% block content %}
+<div class="container py-3">
+    <h2 class="mb-4"><i class="bi bi-gear"></i> Account Management</h2>
+    
+    <div class="row g-4">
+        <!-- Profile Information -->
+        <div class="col-md-6">
+            <div class="card border-primary">
+                <div class="card-header bg-primary text-white fw-semibold">
+                    <i class="bi bi-person"></i> Profile Information
+                </div>
+                <div class="card-body">
+                    <form method="post" action="{% url 'core:account_management' %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="update_profile">
+                        
+                        <div class="mb-3">
+                            <label for="{{ profile_form.first_name.id_for_label }}" class="form-label">First Name</label>
+                            {{ profile_form.first_name }}
+                            {% if profile_form.first_name.errors %}
+                                <div class="text-danger small">{{ profile_form.first_name.errors }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="{{ profile_form.last_name.id_for_label }}" class="form-label">Last Name</label>
+                            {{ profile_form.last_name }}
+                            {% if profile_form.last_name.errors %}
+                                <div class="text-danger small">{{ profile_form.last_name.errors }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="{{ profile_form.email.id_for_label }}" class="form-label">Email Address</label>
+                            {{ profile_form.email }}
+                            {% if profile_form.email.errors %}
+                                <div class="text-danger small">{{ profile_form.email.errors }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle"></i> Update Profile
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Change Password -->
+        <div class="col-md-6">
+            <div class="card border-warning">
+                <div class="card-header bg-warning text-dark fw-semibold">
+                    <i class="bi bi-key"></i> Change Password
+                </div>
+                <div class="card-body">
+                    <form method="post" action="{% url 'core:account_management' %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="change_password">
+                        
+                        <div class="mb-3">
+                            <label for="{{ password_form.old_password.id_for_label }}" class="form-label">Current Password</label>
+                            {{ password_form.old_password }}
+                            {% if password_form.old_password.errors %}
+                                <div class="text-danger small">{{ password_form.old_password.errors }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="{{ password_form.new_password1.id_for_label }}" class="form-label">New Password</label>
+                            {{ password_form.new_password1 }}
+                            {% if password_form.new_password1.errors %}
+                                <div class="text-danger small">{{ password_form.new_password1.errors }}</div>
+                            {% elif password_form.new_password1.help_text %}
+                                <div class="form-text">{{ password_form.new_password1.help_text }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="{{ password_form.new_password2.id_for_label }}" class="form-label">Confirm New Password</label>
+                            {{ password_form.new_password2 }}
+                            {% if password_form.new_password2.errors %}
+                                <div class="text-danger small">{{ password_form.new_password2.errors }}</div>
+                            {% elif password_form.new_password2.help_text %}
+                                <div class="form-text">{{ password_form.new_password2.help_text }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <button type="submit" class="btn btn-warning">
+                            <i class="bi bi-key-fill"></i> Change Password
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Daily Reminders -->
+        <div class="col-md-6">
+            <div class="card border-info">
+                <div class="card-header bg-info text-white fw-semibold">
+                    <i class="bi bi-bell"></i> Daily Reminders
+                </div>
+                <div class="card-body">
+                    <form method="post" action="{% url 'core:account_management' %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="update_reminders">
+                        
+                        <div class="mb-3">
+                            <div class="form-check form-switch">
+                                {{ reminder_form.daily_reminder_enabled }}
+                                <label class="form-check-label" for="{{ reminder_form.daily_reminder_enabled.id_for_label }}">
+                                    {{ reminder_form.daily_reminder_enabled.label }}
+                                </label>
+                            </div>
+                            {% if reminder_form.daily_reminder_enabled.help_text %}
+                                <div class="form-text">{{ reminder_form.daily_reminder_enabled.help_text }}</div>
+                            {% endif %}
+                            {% if reminder_form.daily_reminder_enabled.errors %}
+                                <div class="text-danger small">{{ reminder_form.daily_reminder_enabled.errors }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="{{ reminder_form.timezone.id_for_label }}" class="form-label">Timezone</label>
+                            {{ reminder_form.timezone }}
+                            {% if reminder_form.timezone.help_text %}
+                                <div class="form-text">{{ reminder_form.timezone.help_text }}</div>
+                            {% endif %}
+                            {% if reminder_form.timezone.errors %}
+                                <div class="text-danger small">{{ reminder_form.timezone.errors }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <button type="submit" class="btn btn-info text-white">
+                            <i class="bi bi-check-circle"></i> Save Reminder Settings
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Teams Management -->
+        <div class="col-md-6">
+            <div class="card border-success">
+                <div class="card-header bg-success text-white fw-semibold">
+                    <i class="bi bi-people"></i> Teams
+                </div>
+                <div class="card-body">
+                    <!-- Current Teams -->
+                    {% if user_teams %}
+                        <div class="mb-3">
+                            <h6 class="fw-semibold">Your Teams</h6>
+                            <div class="list-group">
+                                {% for team in user_teams %}
+                                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <strong>{{ team.name }}</strong>
+                                            {% if profile.team == team %}
+                                                <span class="badge bg-primary ms-2">Primary</span>
+                                            {% endif %}
+                                        </div>
+                                        <form method="post" action="{% url 'core:account_management' %}" class="d-inline" 
+                                              onsubmit="return confirm('Are you sure you want to leave {{ team.name }}?');">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="action" value="leave_team">
+                                            <input type="hidden" name="team_id" value="{{ team.id }}">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                <i class="bi bi-x-circle"></i> Leave
+                                            </button>
+                                        </form>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="alert alert-info mb-3">
+                            <i class="bi bi-info-circle"></i> You're not currently on any teams.
+                        </div>
+                    {% endif %}
+                    
+                    <!-- Join Team Form -->
+                    <div class="border-top pt-3">
+                        <h6 class="fw-semibold mb-3">Join a Team</h6>
+                        <form method="post" action="{% url 'core:account_management' %}">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="join_team">
+                            
+                            <div class="mb-3">
+                                <label for="{{ join_team_form.join_code.id_for_label }}" class="form-label">Team Code</label>
+                                {{ join_team_form.join_code }}
+                                {% if join_team_form.join_code.help_text %}
+                                    <div class="form-text">{{ join_team_form.join_code.help_text }}</div>
+                                {% endif %}
+                                {% if join_team_form.join_code.errors %}
+                                    <div class="text-danger small">{{ join_team_form.join_code.errors }}</div>
+                                {% endif %}
+                            </div>
+                            
+                            <button type="submit" class="btn btn-success">
+                                <i class="bi bi-plus-circle"></i> Join Team
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Back to Dashboard -->
+    <div class="mt-4">
+        <a href="{% if user.profile.role == 'COACH' %}{% url 'core:coach_dashboard' %}{% else %}{% url 'core:player_dashboard' %}{% endif %}" 
+           class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Back to Dashboard
+        </a>
+    </div>
+</div>
+{% endblock %}
+

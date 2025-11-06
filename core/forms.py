@@ -5,6 +5,8 @@ from django.core.exceptions import ValidationError
 from .models import ReadinessReport, TeamTag, TeamSchedule
 from django.contrib.auth.models import User
 from .models import Team, Profile
+from PIL import Image
+import os
 
 
 class StepperWidget(forms.Widget):
@@ -222,6 +224,61 @@ class TeamNameForm(forms.ModelForm):
         }
 
 
+class TeamLogoForm(forms.ModelForm):
+    """Form for uploading and configuring team logo."""
+    
+    class Meta:
+        model = Team
+        fields = ['logo', 'logo_display_mode', 'background_opacity', 'background_position']
+        widgets = {
+            'logo': forms.FileInput(attrs={
+                'accept': 'image/png,image/jpeg,image/jpg,image/svg+xml',
+                'class': 'form-control'
+            }),
+            'logo_display_mode': forms.Select(attrs={'class': 'form-select'}),
+            'background_opacity': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'type': 'range',
+                'min': '0.01',
+                'max': '0.5',
+                'step': '0.01'
+            }),
+            'background_position': forms.Select(attrs={'class': 'form-select'}),
+        }
+    
+    def clean_logo(self):
+        """Validate uploaded logo."""
+        logo = self.cleaned_data.get('logo')
+        
+        # If no new logo uploaded, keep existing one
+        if not logo:
+            return self.instance.logo if self.instance else None
+        
+        # Check file size (max 5MB)
+        if logo.size > 5 * 1024 * 1024:
+            raise forms.ValidationError("Logo file size must be less than 5MB.")
+        
+        # Check file type by extension (more reliable than content_type)
+        valid_extensions = ['.png', '.jpg', '.jpeg', '.svg']
+        file_ext = os.path.splitext(logo.name)[1].lower()
+        if file_ext not in valid_extensions:
+            raise forms.ValidationError("Logo must be PNG, JPG, or SVG format.")
+        
+        # For raster images (not SVG), validate dimensions
+        if file_ext != '.svg':
+            try:
+                img = Image.open(logo)
+                width, height = img.size
+                if width > 2000 or height > 2000:
+                    raise forms.ValidationError("Logo dimensions must be less than 2000x2000 pixels.")
+                # Reset file pointer for saving
+                logo.seek(0)
+            except Exception as e:
+                raise forms.ValidationError(f"Invalid image file: {str(e)}")
+        
+        return logo
+
+
 class AddMemberForm(forms.Form):
     """
     Attach an existing user to the coach's team and set their role.
@@ -256,14 +313,18 @@ class AddMemberForm(forms.Form):
 
 
 class UserSignupForm(forms.Form):
-    """User registration form with password validation."""
-    username = forms.CharField(
+    """User registration form with full name, email, and password validation."""
+    first_name = forms.CharField(
         max_length=150,
-        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Username', 'autofocus': True}),
-        help_text='Choose a unique username'
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'First name', 'autofocus': True}),
+    )
+    last_name = forms.CharField(
+        max_length=150,
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Last name'}),
     )
     email = forms.EmailField(
-        widget=forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'Email address'})
+        widget=forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'Email address'}),
+        help_text='This will be used for login'
     )
     password1 = forms.CharField(
         label='Password',
@@ -273,14 +334,19 @@ class UserSignupForm(forms.Form):
     password2 = forms.CharField(
         label='Password confirmation',
         widget=forms.PasswordInput(attrs={'class': 'form-control', 'placeholder': 'Confirm password'}),
-        help_text='Enter the same password as before, for verification.'
     )
 
-    def clean_username(self):
-        username = self.cleaned_data.get('username')
-        if User.objects.filter(username=username).exists():
-            raise forms.ValidationError('A user with that username already exists.')
-        return username
+    def clean_first_name(self):
+        first_name = self.cleaned_data.get('first_name', '').strip()
+        if not first_name:
+            raise forms.ValidationError('First name is required.')
+        return first_name
+
+    def clean_last_name(self):
+        last_name = self.cleaned_data.get('last_name', '').strip()
+        if not last_name:
+            raise forms.ValidationError('Last name is required.')
+        return last_name
 
     def clean_email(self):
         email = self.cleaned_data.get('email')
@@ -306,10 +372,15 @@ class UserSignupForm(forms.Form):
 
     def save(self, role, commit=True):
         """Create User and Profile with the specified role."""
+        email = self.cleaned_data['email']
+        # Django requires username, so we use email as the username value
         user = User.objects.create_user(
-            username=self.cleaned_data['username'],
-            email=self.cleaned_data['email'],
-            password=self.cleaned_data['password1']
+            username=email,  # Use email as username to satisfy Django's requirement
+            email=email,
+            password=self.cleaned_data['password1'],
+            first_name=self.cleaned_data['first_name'],
+            last_name=self.cleaned_data['last_name'],
+            is_active=False  # User must verify email before activation
         )
         profile = user.profile  # Created by signal
         profile.role = role
@@ -360,3 +431,210 @@ class JoinTeamForm(forms.Form):
         except Team.DoesNotExist:
             raise forms.ValidationError('Invalid team code. Please check and try again.')
         return code
+
+
+class FeatureRequestForm(forms.Form):
+    """Form for users to submit feature requests."""
+    message = forms.CharField(
+        label='Feature Request',
+        widget=forms.Textarea(attrs={
+            'class': 'form-control',
+            'placeholder': 'Describe your feature request or feedback...',
+            'rows': 8,
+            'style': 'resize: vertical;'
+        }),
+        help_text='Share your ideas, suggestions, or report issues. We value your feedback!',
+        max_length=2000,
+        min_length=10
+    )
+    
+    def clean_message(self):
+        message = self.cleaned_data.get('message', '').strip()
+        if len(message) < 10:
+            raise forms.ValidationError('Please provide more details (at least 10 characters).')
+        return message
+
+
+class UpdateProfileForm(forms.Form):
+    """Form for updating user profile information (name, email)."""
+    first_name = forms.CharField(
+        max_length=150,
+        required=True,
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'First name'}),
+        label='First Name'
+    )
+    last_name = forms.CharField(
+        max_length=150,
+        required=True,
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Last name'}),
+        label='Last Name'
+    )
+    email = forms.EmailField(
+        required=True,
+        widget=forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'Email address'}),
+        label='Email Address'
+    )
+    
+    def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+        if self.user:
+            self.fields['first_name'].initial = self.user.first_name
+            self.fields['last_name'].initial = self.user.last_name
+            self.fields['email'].initial = self.user.email
+    
+    def clean_email(self):
+        email = self.cleaned_data.get('email')
+        if email and self.user:
+            # Check if email is already taken by another user
+            if User.objects.filter(email=email).exclude(pk=self.user.pk).exists():
+                raise forms.ValidationError('A user with that email already exists.')
+        return email
+
+
+class ChangePasswordForm(forms.Form):
+    """Form for changing user password."""
+    old_password = forms.CharField(
+        label='Current Password',
+        widget=forms.PasswordInput(attrs={'class': 'form-control', 'placeholder': 'Enter current password'}),
+        required=True
+    )
+    new_password1 = forms.CharField(
+        label='New Password',
+        widget=forms.PasswordInput(attrs={'class': 'form-control', 'placeholder': 'Enter new password'}),
+        required=True,
+        help_text='Your password must contain at least 8 characters.'
+    )
+    new_password2 = forms.CharField(
+        label='Confirm New Password',
+        widget=forms.PasswordInput(attrs={'class': 'form-control', 'placeholder': 'Confirm new password'}),
+        required=True,
+        help_text='Enter the same password as before, for verification.'
+    )
+    
+    def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+    
+    def clean_old_password(self):
+        old_password = self.cleaned_data.get('old_password')
+        if self.user and not self.user.check_password(old_password):
+            raise forms.ValidationError('Your current password is incorrect.')
+        return old_password
+    
+    def clean_new_password1(self):
+        password1 = self.cleaned_data.get('new_password1')
+        if self.user:
+            try:
+                validate_password(password1, self.user)
+            except ValidationError as e:
+                raise forms.ValidationError(e.messages)
+        return password1
+    
+    def clean(self):
+        cleaned_data = super().clean()
+        password1 = cleaned_data.get('new_password1')
+        password2 = cleaned_data.get('new_password2')
+        if password1 and password2 and password1 != password2:
+            raise forms.ValidationError("The two password fields didn't match.")
+        return cleaned_data
+    
+    def save(self):
+        """Update the user's password."""
+        if self.user:
+            self.user.set_password(self.cleaned_data['new_password1'])
+            self.user.save()
+        return self.user
+
+
+class JoinTeamByCodeForm(forms.Form):
+    """Form to join a team using a join code (updated for multiple teams)."""
+    join_code = forms.CharField(
+        max_length=8,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Enter team code',
+            'autofocus': True,
+            'style': 'text-transform: uppercase;'
+        }),
+        help_text='Enter the 6-character team code'
+    )
+    
+    def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+    
+    def clean_join_code(self):
+        code = self.cleaned_data.get('join_code', '').upper().strip()
+        if not code:
+            raise forms.ValidationError('Please enter a team code.')
+        try:
+            team = Team.objects.get(join_code=code)
+            self.cleaned_data['team'] = team
+        except Team.DoesNotExist:
+            raise forms.ValidationError('Invalid team code. Please check and try again.')
+        return code
+    
+    def clean(self):
+        cleaned_data = super().clean()
+        if self.user and 'team' in cleaned_data:
+            team = cleaned_data['team']
+            profile = self.user.profile
+            
+            # Check if already in this team
+            if team in profile.get_teams():
+                raise forms.ValidationError('You are already a member of this team.')
+        
+        return cleaned_data
+    
+    def save(self):
+        """Add the team to the user's teams."""
+        if self.user and 'team' in self.cleaned_data:
+            team = self.cleaned_data['team']
+            profile = self.user.profile
+            
+            # Add to teams ManyToMany
+            profile.teams.add(team)
+            
+            # If no primary team set, set it as primary
+            if not profile.team:
+                profile.team = team
+                profile.save()
+            
+            return team
+        return None
+
+
+class ReminderSettingsForm(forms.Form):
+    """Form for managing daily reminder preferences."""
+    daily_reminder_enabled = forms.BooleanField(
+        required=False,
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        label='Enable daily reminder emails',
+        help_text='Receive daily reminder emails at 12pm in your local timezone'
+    )
+    timezone = forms.CharField(
+        max_length=50,
+        required=True,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'e.g., America/New_York, Europe/London'
+        }),
+        label='Timezone',
+        help_text='Your timezone for daily reminders (e.g., America/New_York, Europe/London, UTC)'
+    )
+    
+    def __init__(self, *args, **kwargs):
+        self.profile = kwargs.pop('profile', None)
+        super().__init__(*args, **kwargs)
+        if self.profile:
+            self.fields['daily_reminder_enabled'].initial = self.profile.daily_reminder_enabled
+            self.fields['timezone'].initial = self.profile.timezone
+    
+    def save(self):
+        """Update the profile's reminder settings."""
+        if self.profile:
+            self.profile.daily_reminder_enabled = self.cleaned_data['daily_reminder_enabled']
+            self.profile.timezone = self.cleaned_data['timezone']
+            self.profile.save()
+        return self.profile

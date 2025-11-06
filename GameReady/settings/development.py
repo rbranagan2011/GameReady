@@ -67,3 +67,9 @@ DATABASES = {
     }
 }
 
+# Email configuration for development
+# Use console backend to print emails to terminal
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+DEFAULT_FROM_EMAIL = 'noreply@gamereadyapp.com'
+BASE_URL = os.environ.get('BASE_URL', 'http://localhost:8000')
+

@@ -11,10 +11,10 @@
 .small-circle svg { width: 100%; height: 100%; transform: rotate(-90deg); }
 .small-circle .bg { fill:none; stroke:#e6e7eb; stroke-width: 10; }
 .small-circle .fg { fill:none; stroke-width: 10; stroke-linecap: round; transition: stroke-dasharray .6s ease-out; }
-/* Align colors with coach dashboard: in-range (green), below (orange), above (blue) */
+/* Align colors with coach dashboard: in-range (green), below (orange), above (purple) */
 .small-circle .fg.in { stroke:#1B5E20; }
 .small-circle .fg.below { stroke:#FF8F00; }
-.small-circle .fg.above { stroke:#0d6efd; }
+.small-circle .fg.above { stroke:#9333EA; }
 .small-circle .score { position:absolute; top:0; left:0; right:0; bottom:0; display:flex; align-items:center; justify-content:center; font-size: 36px; font-weight: 800; text-align:center; line-height:1; margin:0; padding:0; box-sizing:border-box; font-variant-numeric:tabular-nums; letter-spacing:0; text-rendering:optimizeLegibility; -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale; }
 .small-circle .score > span { display:block; width:100%; text-align:center; }
 .nudge { text-align:center; margin-top: 8px; font-weight: 600; color:#1f2937; }
@@ -90,6 +90,83 @@
     padding: 0 !important;
   }
 }
+
+/* Monthly calendar responsive scroll container */
+.month-scroll { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+.month-head, .month-grid { min-width: 560px; }
+
+/* Weekly grid alignment - use consistent column sizing */
+.weekly-grid-cols { grid-template-columns: 1.2fr 1fr 0.8fr 1fr; }
+
+/* Mobile-friendly floating How it works bubble */
+@media (max-width: 768px) {
+  #howItWorks {
+    top: 50% !important;
+    left: 50% !important;
+    right: auto !important;
+    bottom: auto !important;
+    transform: translate(-50%, -50%) !important;
+    width: 96vw !important;
+    max-width: 96vw !important;
+    max-height: 80vh !important;
+    overflow: auto !important;
+    border-radius: 12px !important;
+  }
+}
+
+/* Hide legacy action bubbles but keep modal available */
+.player-actions-hidden > .section { display: none; }
+
+/* 3D effect for big conditioning score circle */
+#bigCircle {
+  box-shadow: 0 8px 24px rgba(0,0,0,0.15), 0 4px 8px rgba(0,0,0,0.1), inset 0 2px 4px rgba(255,255,255,0.3), inset 0 -2px 4px rgba(0,0,0,0.1);
+  border: 3px solid rgba(255,255,255,0.8);
+  background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.4), rgba(255,255,255,0.1));
+  position: relative;
+  border-radius: 50%;
+  overflow: visible;
+}
+#bigCircle::before {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(255,255,255,0.3) 0%, rgba(0,0,0,0.1) 100%);
+  z-index: -1;
+  opacity: 0.6;
+}
+#bigCircle svg {
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+}
+#bigCircle .score {
+  text-shadow: 0 2px 4px rgba(0,0,0,0.15), 0 1px 2px rgba(255,255,255,0.3);
+}
+
+/* Status pill hover effect */
+#statusOpenBtn:hover #statusOpenPill {
+  transform: scale(1.05);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+#statusOpenBtn:hover span[style*="text-decoration:underline"] {
+  color: #0d6efd;
+}
+
+/* How does this work button hover */
+#openHowLink:hover {
+  background: #0d6efd !important;
+  color: #ffffff !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(13, 110, 253, 0.3);
+}
+#openHowLink:active {
+  transform: translateY(0);
+}
+
+/* Monthly calendar day cell hover */
+.month-day-cell.js-day-details:hover {
+  background: #f8f9fa !important;
+  border-color: rgba(13, 110, 253, 0.2) !important;
+}
 </style>
 {% endblock %}
 
@@ -103,12 +180,108 @@
     </div>
   </div>
   {% endif %}
-  <div class="section" style="text-align:center; font-weight:700; font-size:18px;">Player Dashboard</div>
-  {% include 'core/_player_actions.html' %}
+  <div class="section" style="text-align:center; font-weight:700; font-size:18px;">
+    {% if athlete_name %}{{ athlete_name }}{% else %}{{ request.user.first_name|default:request.user.username }}{% endif %}'s Dashboard
+  </div>
+
+  <!-- New hero: big conditioning score + side info -->
+  <div class="section" style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; align-items:center;">
+    <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px;">
+      <div id="bigCircle" class="small-circle {% if athlete_name and today_has_report %}clickable{% elif not athlete_name %}clickable{% endif %}" data-score="{% if today_has_report %}{{ today_score|default:0 }}{% else %}0{% endif %}" style="width:140px;height:140px;{% if athlete_name and not today_has_report %}cursor:default;{% endif %}" tabindex="{% if athlete_name and not today_has_report %}-1{% else %}0{% endif %}" role="button" aria-label="{% if athlete_name %}View today's metrics{% else %}View or submit today's metrics{% endif %}">
+        <svg viewBox="0 0 100 100">
+          <circle class="bg" cx="50" cy="50" r="40"></circle>
+          <circle class="fg {% if today_has_report %}in{% else %}below{% endif %}" cx="50" cy="50" r="40" stroke-dasharray="0 251.3" stroke-dashoffset="0"></circle>
+        </svg>
+        <div class="score"><span style="display:block;">{% if today_has_report %}{{ today_score|default:'—' }}{% else %}—{% endif %}</span></div>
+      </div>
+      <div class="nudge" style="font-size:14px; color:#1f2937;">
+        {% if athlete_name %}
+          {# Coach view #}
+          {% if today_has_report %}
+            {% if today_status == 'in' %}In target range{% elif today_status == 'above' %}Above target range{% elif today_status == 'below' %}Below target range{% else %}Score recorded{% endif %}
+          {% else %}No report submitted{% endif %}
+        {% else %}
+          {# Player view #}
+          {% if today_has_report %}
+            {% if today_status == 'in' %}Well done, you are in range!{% elif today_status == 'above' %}Above the target range today{% elif today_status == 'below' %}Below the target range today{% else %}Today's score recorded{% endif %}
+          {% else %}Tap the circle to log your score{% endif %}
+        {% endif %}
+      </div>
+    </div>
+    <div>
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        <div>
+          <div style="font-weight:700; text-align:left;">{{ today_pretty|default:today_date_str }}</div>
+          <div class="subtle" style="color:#6b7280; margin-top:4px; line-height:1.5; text-align:left;">
+            {% if today_tag_name and today_tag_name != '—' %}
+              <div style="font-weight:600; margin-bottom:4px;">{{ today_tag_name }} Day</div>
+              <div style="font-size:12px;">Your coach has set a target range of {{ today_range_min }}–{{ today_range_max }}% today</div>
+            {% else %}
+              <div style="font-weight:600; margin-bottom:4px;">No specific day type set</div>
+              <div style="font-size:12px;">Aim for a readiness score around 70% for general training</div>
+    {% endif %}
+          </div>
+        </div>
+        <div><span class="subtle" style="font-weight:600; color:#6b7280;">Team</span><div style="font-weight:700;">{% if is_multiple_teams %}{% for team in user_teams %}{{ team.name }}{% if not forloop.last %}, {% endif %}{% endfor %}{% elif user_teams %}{{ user_teams.0.name }}{% else %}—{% endif %}</div></div>
+        <div>
+          <span class="subtle" style="font-weight:600; color:#6b7280;">Status</span>
+          <div style="margin-top:4px;">
+            {% if athlete_name %}
+              {# Coach view - read only #}
+              <div style="display:inline-flex; align-items:center; gap:8px;">
+                <span id="statusOpenPill" class="badge rounded-pill {% if current_status == 'AVAILABLE' %}text-bg-success{% elif current_status == 'INJURED' %}text-bg-danger{% elif current_status == 'SICK' %}text-bg-warning{% else %}text-bg-secondary{% endif %}" style="min-width:34px; height:34px; display:inline-flex; align-items:center; justify-content:center; font-weight:700; font-size:12px;">
+                  <span id="statusOpenCurrent">{{ current_status|default:'AVAILABLE' }}</span>
+                </span>
+                <span style="font-size:12px; color:#6b7280;">Read-only</span>
+              </div>
+            {% else %}
+              {# Player view - editable #}
+              <button type="button" id="statusOpenBtn" style="border:none; background:transparent; padding:0; cursor:pointer; display:inline-flex; align-items:center; gap:8px;">
+                <span id="statusOpenPill" class="badge rounded-pill {% if current_status == 'AVAILABLE' %}text-bg-success{% elif current_status == 'INJURED' %}text-bg-danger{% elif current_status == 'SICK' %}text-bg-warning{% else %}text-bg-secondary{% endif %}" style="min-width:34px; height:34px; display:inline-flex; align-items:center; justify-content:center; font-weight:700; font-size:12px; transition: transform 0.2s ease, box-shadow 0.2s ease;">
+                  <span id="statusOpenCurrent">{{ current_status|default:'AVAILABLE' }}</span>
+                </span>
+                <span style="font-size:12px; color:#6b7280; text-decoration:underline;">Click to edit</span>
+              </button>
+            {% endif %}
+          </div>
+        </div>
+        <div style="margin-top:16px; padding-top:16px; border-top:1px solid rgba(0,0,0,0.08);">
+          <button type="button" id="openHowLink" style="width:100%; padding:12px 16px; background:#f8f9fa; border:2px solid #0d6efd; border-radius:8px; font-weight:600; font-size:14px; color:#0d6efd; cursor:pointer; transition: all 0.2s ease; text-align:center;">How does this work?</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Floating How it works bubble (standalone) -->
+  <div id="howItWorks" style="position:fixed; bottom:20px; right:20px; z-index:1100; width: min(520px, 92vw); background:#ffffff; border:1px solid rgba(0,0,0,0.08); box-shadow: 0 10px 30px rgba(0,0,0,0.15); border-radius:14px; padding:14px; display:none;">
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+        <div style="font-weight:800; font-size:16px;">Welcome to GameReady!</div>
+        <button type="button" id="hideHowBtn" class="close-btn" style="padding:6px 10px;">✕</button>
+      </div>
+      <div style="margin-top:8px; color:#374151; font-size:14px; line-height:1.5;">
+        <p style="margin:0 0 8px 0;">This app uses your self‑reported health metrics to calculate your <strong>Game Ready Score</strong>. Coaches use it to train and play the team appropriately without increasing injury risk. <strong>Consistent and truthful reporting helps everyone perform better.</strong></p>
+        <p style="margin:0 0 8px 0;">At the top, you’ll see whether you logged today and your <strong>current availability status</strong>.</p>
+        <p style="margin:0 0 8px 0;">The Player Dashboard shows a <strong>Weekly</strong> and <strong>Monthly</strong> overview. <strong>Tap your score circle</strong> on any day to view your seven metrics for that date. Use the arrows to move between weeks and months.</p>
+        <p style="margin:0 0 8px 0;">On the monthly calendar, you'll see <strong>colored dots</strong> in the top-right of each day showing your scheduled activities from all teams. <strong>Click any day</strong> (not the score circle) to see the full schedule with target ranges and add your own <strong>personal labels</strong> (like "Gym session" or "Personal training") that your coach can see.</p>
+        <p style="margin:0 0 8px 0;">Each day has a coach‑assigned <strong>tag</strong> with a target score range. Ring colours mean:
+          <span style="color:#1B5E20; font-weight:700;"> Green = In range</span>,
+          <span style="color:#FF8F00; font-weight:700;"> Orange = Below</span>,
+          <span style="color:#9333EA; font-weight:700;"> Purple = Above</span>.
+        </p>
+        <p style="margin:0 0 8px 0;">If you’re <strong>injured</strong> or <strong>sick</strong>, set it via <em>Current status</em> so your coach knows.</p>
+      </div>
+      <!-- No action chips in the bubble per request -->
+    </div>
+  </div>
+  <!-- Include actions markup but hide only the old top action bubbles; keep modal available -->
+  {% if not athlete_name %}
+    {# Only show action buttons for players, not coaches #}
+    <div class="player-actions-hidden">{% include 'core/_player_actions.html' %}</div>
+  {% endif %}
   <div id="weekly-container" class="fade-container">
-    <div class="section" style="font-weight:700;">Weekly Overview</div>
-    <!-- Weekly navigation -->
     <div class="section">
+      <div style="font-weight:700; text-align:center; margin-bottom:8px;">Weekly Overview</div>
+      <!-- Weekly navigation -->
       <div class="date-nav">
         <div class="date-picker">
           <a href="?week_start={{ prev_week_start|date:'Y-m-d' }}" class="date-btn js-week-nav" data-week-start="{{ prev_week_start|date:'Y-m-d' }}" title="Previous week" aria-label="Previous week" role="button">←</a>
@@ -117,8 +290,8 @@
         </div>
       </div>
       <!-- Recent days table -->
-      <div style="display:grid; grid-template-columns: 1.2fr 1.2fr 1fr 1fr; gap:8px; align-items:center; font-weight:600; margin-bottom:6px;">
-        <div>Day</div><div>Type</div><div>Score</div><div>Target</div>
+      <div class="weekly-grid-cols" style="display:grid; gap:8px; align-items:center; font-weight:600; margin-bottom:6px;">
+        <div>Day</div><div>Type</div><div style="text-align:center; justify-self:center;">Score</div><div>Target</div>
       </div>
       {% if not has_schedule %}
         <div class="alert alert-info" role="status">You are not assigned to a team yet. Day types and targets will appear once a coach adds you to a team.</div>
@@ -126,10 +299,10 @@
         <div class="alert alert-secondary" role="status">No reports this week yet. Submit your first report to see your data here.</div>
       {% endif %}
       {% for r in recent_rows %}
-        <div style="display:grid; grid-template-columns: 1.2fr 1.2fr 1fr 1fr; gap:8px; align-items:center; padding:6px 0; border-top: 1px solid rgba(0,0,0,0.06);">
+        <div class="weekly-grid-cols" style="display:grid; gap:8px; align-items:center; padding:6px 0; border-top: 1px solid rgba(0,0,0,0.06);">
           <div>{{ r.day_label }}</div>
           <div>{{ r.type }}</div>
-          <div style="display:flex; justify-content:center; align-items:center;">
+          <div style="display:flex; justify-content:center; align-items:center; justify-self:center;">
             <div class="small-circle clickable" data-score="{{ r.score|default:0 }}" data-date="{{ r.date_str }}" style="width:46px;height:46px;" tabindex="0" role="button" aria-label="View metrics for {{ r.date_str }}">
               <svg viewBox="0 0 100 100">
                 <circle class="bg" cx="50" cy="50" r="40"></circle>
@@ -158,12 +331,23 @@
   </div>
   </div>
 
+<!-- Modal for day details (schedule + personal label) -->
+<div id="dayDetailsModal" class="modal-backdrop" role="dialog" aria-modal="true" style="display:none;">
+  <div class="modal-card" role="document" style="max-width:500px;">
+    <button class="close-btn" id="dayDetailsClose" aria-label="Close">✕</button>
+    <div class="modal-title" id="dayDetailsTitle">Day Details</div>
+    <div id="dayDetailsBody" style="padding:0;">
+      <div style="text-align:center; color:#6b7280; padding:20px;">Loading…</div>
+    </div>
+  </div>
+  </div>
+
 <!-- Monthly overview -->
 <div class="dashboard">
   <div id="monthly-container" class="fade-container">
-    <div class="section" style="font-weight:700;">Monthly Overview</div>
-    <!-- Monthly navigation -->
     <div class="section">
+      <div style="font-weight:700; text-align:center; margin-bottom:8px;">Monthly Overview</div>
+      <!-- Monthly navigation -->
       <div class="date-nav">
         <div class="date-picker">
           <a href="?month={{ prev_month|date:'Y-m' }}" class="date-btn js-month-nav" data-month="{{ prev_month|date:'Y-m' }}" title="Previous month" aria-label="Previous month" role="button">←</a>
@@ -171,14 +355,28 @@
           <a href="?month={{ next_month|date:'Y-m' }}" class="date-btn js-month-nav" data-month="{{ next_month|date:'Y-m' }}" title="Next month" aria-label="Next month" role="button">→</a>
         </div>
       </div>
-      <div style="display:grid; grid-template-columns: repeat(7, 1fr); gap:8px; text-align:center; color:#6b7280; font-size:12px; margin-bottom:8px;">
+      <div class="month-scroll">
+        <div class="month-head" style="display:grid; grid-template-columns: repeat(7, 1fr); gap:8px; text-align:center; color:#6b7280; font-size:12px; margin-bottom:8px;">
         <div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div><div>Sun</div>
       </div>
-      <div style="display:grid; grid-template-columns: repeat(7, 1fr); gap:10px;">
+        <div class="month-grid" style="display:grid; grid-template-columns: repeat(7, 1fr); gap:10px;">
         {% for c in month_cells %}
-          <div style="min-height:82px; border:1px solid rgba(0,0,0,0.06); border-radius:10px; padding:6px; position:relative; background:#fff;">
+          <div class="month-day-cell {% if c.date %}js-day-details{% endif %}" data-date="{{ c.date_str|default:'' }}" style="min-height:82px; border:1px solid rgba(0,0,0,0.06); border-radius:10px; padding:6px; position:relative; background:#fff; cursor:{% if c.date %}pointer{% else %}default{% endif %}; transition: background 0.2s;">
             {% if c.date %}
-              <div style="position:absolute; top:6px; left:8px; font-size:12px; color:#6b7280;">{{ c.day }}</div>
+              <div style="position:absolute; top:6px; left:8px; font-size:12px; color:#6b7280; font-weight:600;">{{ c.day }}</div>
+              {% if c.day_tags or c.personal_label %}
+                <div style="position:absolute; top:6px; right:6px; display:flex; gap:2px; flex-wrap:wrap; max-width:50%;">
+                  {% for team_name, tag_name, tag_color in c.day_tags|slice:":2" %}
+                    <span style="display:inline-block; width:6px; height:6px; border-radius:50%; background:{{ tag_color }}; opacity:0.7;" title="{{ team_name }}: {{ tag_name }}"></span>
+                  {% endfor %}
+                  {% if c.day_tags|length > 2 %}
+                    <span style="font-size:8px; color:#999;">+{{ c.day_tags|length|add:"-2" }}</span>
+                  {% endif %}
+                  {% if c.personal_label %}
+                    <span style="font-size:8px; color:#6b7280;" title="Personal: {{ c.personal_label }}">●</span>
+                  {% endif %}
+                </div>
+              {% endif %}
               <div style="display:flex; justify-content:center; align-items:center; height:100%;">
             <div class="small-circle clickable" data-date="{{ c.date_str }}" data-score="{{ c.score|default:0 }}" style="width:42px;height:42px;" tabindex="0" role="button" aria-label="View metrics for {{ c.date_str }}">
                   <svg viewBox="0 0 100 100">
@@ -191,6 +389,7 @@
             {% endif %}
           </div>
         {% endfor %}
+        </div>
       </div>
     </div>
   </div>
@@ -224,11 +423,147 @@ function animateSmallCircles(root){
   const weekPartialUrl = '{{ week_partial_url|default:"/player-dashboard/weekly/" }}';
   const monthPartialUrl = '{{ month_partial_url|default:"/player-dashboard/monthly/" }}';
 
+  // How it works bubble: standalone controller and global open/close helpers
+  (function(){
+    const KEY = 'gr_player_howitworks_seen';
+    const how = document.getElementById('howItWorks');
+    if(!how) return;
+    const hideBtn = document.getElementById('hideHowBtn');
+    function getCount(){ try{ return parseInt(localStorage.getItem(KEY)||'0',10); }catch(_){ return 0; } }
+    function setCount(v){ try{ localStorage.setItem(KEY, String(v)); }catch(_){} }
+    function openHow(){ how.style.display='block'; }
+    function closeHow(){ how.style.display='none'; }
+    window.GR_openHow = openHow;
+    window.GR_closeHow = closeHow;
+    const seen = getCount();
+    if(seen < 1){ openHow(); setCount(seen+1); }
+    hideBtn && hideBtn.addEventListener('click', function(){ closeHow(); setCount(3); });
+  })();
+
+  // Big circle click: open today's metrics or go to submit
+  (function(){
+    const big = document.getElementById('bigCircle');
+    if(!big) return;
+    const isCoachView = {% if athlete_name %}true{% else %}false{% endif %};
+    const has = {{ today_has_report|yesno:'true,false' }};
+    function handle(){
+      if(isCoachView){
+        // Coach view: only open metrics modal, never submit
+        if(has){
+          const modal = document.getElementById('metricsModal');
+          const modalBody = document.getElementById('modalBody');
+          const modalTitle = document.getElementById('modalTitle');
+          const closeBtn = document.getElementById('modalClose');
+          if(!modal || !modalBody || !modalTitle) return;
+          
+          const dateStr = '{{ today_date_str|default:"" }}';
+          if(!dateStr) return;
+          
+          modal.style.display = 'flex';
+          setTimeout(()=>{ if(closeBtn) closeBtn.focus(); }, 0);
+          modalTitle.textContent = `Metrics for ${dateStr}`;
+          modalBody.innerHTML = '<div style="text-align:center; color:#6b7280;">Loading…</div>';
+          
+          const metricsUrl = '{{ metrics_base_url|default:"/player-dashboard/metrics/" }}';
+          fetch(`${metricsUrl}?date=${dateStr}`)
+            .then(r=>r.json())
+            .then(data=>{
+              if(!data.success){ 
+                modalBody.innerHTML = `<div style='color:#b91c1c;text-align:center;'>${data.message||'Failed to load'}</div>`; 
+                return; 
+              }
+              const items = data.metrics.map(m=>`<div class='metric-item'><div style='font-weight:700;font-size:18px;'>${m.score}</div><div style='font-size:12px;color:#6b7280;'>${m.name}</div></div>`).join('');
+              modalBody.innerHTML = `<div class='metric-grid'>${items}</div>`;
+            })
+            .catch(()=>{ modalBody.innerHTML = `<div style='color:#b91c1c;text-align:center;'>Failed to load</div>`; });
+        }
+        // If no report, do nothing (read-only view)
+      } else {
+        // Player view: normal behavior
+        if(has){
+          const submitBtn = document.getElementById('action-submit');
+          if(submitBtn){ submitBtn.click(); return; }
+        } else {
+          window.location.href = '{% url "core:submit_report" %}';
+        }
+      }
+    }
+    big.addEventListener('click', handle);
+    if(!(isCoachView && !has)) {
+      // Only enable keyboard navigation if not coach view with no report
+      big.addEventListener('keydown', function(e){ 
+        if(e.key==='Enter'||e.key===' '){ e.preventDefault(); handle(); }
+      });
+    }
+  })();
+
+  // Status pill -> open modal (only for players, not coaches)
+  (function(){
+    const isCoachView = {% if athlete_name %}true{% else %}false{% endif %};
+    if(isCoachView) return; // Don't enable status editing in coach view
+    const btnOpen = document.getElementById('statusOpenBtn');
+    if(!btnOpen) return;
+    btnOpen.addEventListener('click', function(e){
+      e.preventDefault();
+      const statusModal = document.getElementById('statusModal');
+      const statusOptions = document.querySelectorAll('.status-option');
+      const statusNote = document.getElementById('statusNote');
+      const noteCharCount = document.getElementById('noteCharCount');
+      const statusModalClose = document.getElementById('statusModalClose');
+      if(!statusModal){
+        const fallbackBtn = document.getElementById('action-status');
+        if(fallbackBtn){ fallbackBtn.click(); }
+        return;
+      }
+      // Compute anchor from pill location
+      const rect = btnOpen.getBoundingClientRect();
+      const anchorX = ((rect.left + rect.right) / 2 / window.innerWidth) * 100;
+      const anchorY = ((rect.top + rect.bottom) / 2 / window.innerHeight) * 100;
+      statusModal.style.setProperty('--anchor-x', anchorX + '%');
+      statusModal.style.setProperty('--anchor-y', anchorY + '%');
+      statusModal.classList.add('modal-animate-from');
+
+      // Preselect current status
+      const currentStatus = '{{ current_status|default:"AVAILABLE" }}';
+      statusOptions.forEach(function(opt){
+        opt.classList.remove('selected');
+        if(opt.getAttribute('data-status') === currentStatus){ opt.classList.add('selected'); }
+      });
+      if(statusNote){
+        statusNote.value = '{{ status_note|default:"" }}';
+        if(noteCharCount) noteCharCount.textContent = statusNote.value.length;
+      }
+      statusModal.style.display = 'flex';
+      setTimeout(()=>{ if(statusModalClose) statusModalClose.focus(); }, 0);
+    });
+  })();
+
+  // Open How link
+  (function(){
+    const link = document.getElementById('openHowLink');
+    if(!link) return;
+    link.addEventListener('click', function(){ if(window.GR_openHow) window.GR_openHow(); });
+  })();
+
   function bindCircleClicks(root){
     (root||document).querySelectorAll('.section .small-circle.clickable').forEach(function(el){
       function openModal(){
         const dateStr = this.getAttribute('data-date');
         if(!dateStr) return;
+        // Hide welcome bubble while modal is open
+        try{
+          const how = document.getElementById('howItWorks');
+          const showBtn = document.getElementById('showHowBtn');
+          if(how){ how.style.display='none'; }
+          if(showBtn){ showBtn.style.display='inline-block'; }
+        }catch(_){ }
+        // Lock background scroll (mobile safari fix)
+        const originalOverflow = document.documentElement.style.overflow || '';
+        const originalBodyOverflow = document.body.style.overflow || '';
+        document.documentElement.setAttribute('data-orig-overflow', originalOverflow);
+        document.body.setAttribute('data-orig-overflow', originalBodyOverflow);
+        document.documentElement.style.overflow = 'hidden';
+        document.body.style.overflow = 'hidden';
         modal.style.display='flex';
         // focus management
         setTimeout(()=>{ closeBtn.focus(); }, 0);
@@ -303,8 +638,183 @@ function animateSmallCircles(root){
   }
   bindMonthNav();
 
+  function unlockScroll(){
+    const o1 = document.documentElement.getAttribute('data-orig-overflow') || '';
+    const o2 = document.body.getAttribute('data-orig-overflow') || '';
+    document.documentElement.style.overflow = o1;
+    document.body.style.overflow = o2;
+  }
+
+  // Close modal helpers
+  (function(){
+    const backdrop = document.getElementById('metricsModal');
+    const closeBtn = document.getElementById('modalClose');
+    if(backdrop){
+      backdrop.addEventListener('click', function(e){ if(e.target===backdrop){ backdrop.style.display='none'; unlockScroll(); }});
+    }
+    if(closeBtn){
+      closeBtn.addEventListener('click', function(){ const m=document.getElementById('metricsModal'); if(m){ m.style.display='none'; unlockScroll(); } });
+    }
+  })();
+
   // ESC to close modal
-  document.addEventListener('keydown', function(e){ if(e.key==='Escape'){ modal.style.display='none'; }});
+  document.addEventListener('keydown', function(e){ if(e.key==='Escape'){ modal.style.display='none'; unlockScroll(); }});
+})();
+
+// Day details modal (schedule + personal labels)
+(function(){
+  const dayDetailsModal = document.getElementById('dayDetailsModal');
+  const dayDetailsBody = document.getElementById('dayDetailsBody');
+  const dayDetailsTitle = document.getElementById('dayDetailsTitle');
+  const dayDetailsClose = document.getElementById('dayDetailsClose');
+  const dayDetailsUrl = '{% if day_details_url %}{{ day_details_url }}{% else %}{% url "core:player_day_details" %}{% endif %}';
+  const personalLabelUrl = '{% url "core:player_set_personal_label" %}';
+  const isCoachView = {% if athlete_name %}true{% else %}false{% endif %};
+  let currentDate = null;
+
+  function openDayDetails(dateStr){
+    if(!dateStr) return;
+    currentDate = dateStr;
+    dayDetailsModal.style.display = 'flex';
+    dayDetailsBody.innerHTML = '<div style="text-align:center; color:#6b7280; padding:20px;">Loading…</div>';
+    document.documentElement.style.overflow = 'hidden';
+    document.body.style.overflow = 'hidden';
+
+    fetch(`${dayDetailsUrl}?date=${dateStr}`)
+      .then(r=>r.json())
+      .then(data=>{
+        if(!data.success){
+          dayDetailsBody.innerHTML = `<div style='color:#b91c1c;text-align:center;padding:20px;'>${data.message||'Failed to load'}</div>`;
+          return;
+        }
+        renderDayDetails(data);
+      })
+      .catch(()=>{
+        dayDetailsBody.innerHTML = '<div style="color:#b91c1c;text-align:center;padding:20px;">Failed to load</div>';
+      });
+  }
+
+  function renderDayDetails(data){
+    dayDetailsTitle.textContent = data.date_display || data.date;
+    
+    let html = '<div style="padding:20px;">';
+    
+    // Team tags section
+    if(data.day_tags && data.day_tags.length > 0){
+      html += '<div style="margin-bottom:20px;">';
+      html += '<div style="font-weight:600; margin-bottom:10px; color:#1f2937;">Schedule</div>';
+      data.day_tags.forEach(function(tag){
+        html += `<div style="display:flex; align-items:center; gap:10px; padding:10px; background:#f8f9fa; border-radius:8px; margin-bottom:8px;">`;
+        html += `<span style="display:inline-block; width:12px; height:12px; border-radius:50%; background:${tag.tag_color};"></span>`;
+        html += `<div style="flex:1;">`;
+        html += `<div style="font-weight:600;">${tag.tag_name}</div>`;
+        html += `<div style="font-size:12px; color:#6b7280;">${tag.team_name} · Target: ${tag.target_min}–${tag.target_max}%</div>`;
+        html += `</div></div>`;
+      });
+      html += '</div>';
+    } else {
+      html += '<div style="margin-bottom:20px; padding:10px; background:#f8f9fa; border-radius:8px; color:#6b7280; font-size:14px;">No scheduled activities for this day</div>';
+    }
+    
+    // Personal label section (only show if not coach view)
+    if(!isCoachView){
+      html += '<div style="border-top:1px solid #e0e0e0; padding-top:20px;">';
+      html += '<div style="font-weight:600; margin-bottom:10px; color:#1f2937;">Personal Label</div>';
+      html += '<div style="font-size:13px; color:#6b7280; margin-bottom:10px;">Add your own label (e.g., "Gym session", "Personal training")</div>';
+      html += '<input type="text" id="personalLabelInput" value="' + (data.personal_label || '') + '" placeholder="e.g., Gym session" maxlength="100" style="width:100%; padding:10px; border:1px solid #e0e0e0; border-radius:8px; font-size:14px; margin-bottom:10px;">';
+      html += '<button type="button" id="savePersonalLabel" style="width:100%; padding:10px; background:#0d6efd; color:#fff; border:none; border-radius:8px; font-weight:600; cursor:pointer; transition:background 0.2s;">Save Label</button>';
+      html += '</div>';
+    } else if(data.personal_label){
+      // Show personal label as read-only in coach view
+      html += '<div style="border-top:1px solid #e0e0e0; padding-top:20px;">';
+      html += '<div style="font-weight:600; margin-bottom:10px; color:#1f2937;">Personal Label</div>';
+      html += '<div style="font-size:14px; color:#374151; padding:10px; background:#f8f9fa; border-radius:8px;">' + (data.personal_label || '—') + '</div>';
+      html += '</div>';
+    }
+    
+    html += '</div>';
+    dayDetailsBody.innerHTML = html;
+
+    // Bind save button (only if not coach view)
+    const saveBtn = document.getElementById('savePersonalLabel');
+    const input = document.getElementById('personalLabelInput');
+    if(saveBtn && input && !isCoachView){
+      function saveLabel(){
+        const label = input.value.trim();
+        const csrfToken = document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+        fetch(personalLabelUrl, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrfToken},
+          body: JSON.stringify({date: currentDate, label: label})
+        })
+        .then(r=>r.json())
+        .then(data=>{
+          if(data.success){
+            saveBtn.textContent = 'Saved!';
+            saveBtn.style.background = '#28a745';
+            setTimeout(()=>{
+              saveBtn.textContent = 'Save Label';
+              saveBtn.style.background = '#0d6efd';
+            }, 1500);
+            // Trigger page refresh for monthly view if needed
+            if(typeof bindMonthNav === 'function'){
+              const monthNav = document.querySelector('.js-month-nav');
+              if(monthNav){
+                const currentMonth = new URLSearchParams(window.location.search).get('month');
+                if(currentMonth){
+                  window.location.reload();
+                }
+              }
+            }
+          }
+        })
+        .catch(()=> alert('Failed to save'));
+      }
+      saveBtn.addEventListener('click', saveLabel);
+      input.addEventListener('keypress', function(e){ if(e.key==='Enter') saveLabel(); });
+    }
+  }
+
+  function closeDayDetails(){
+    dayDetailsModal.style.display = 'none';
+    document.documentElement.style.overflow = '';
+    document.body.style.overflow = '';
+    currentDate = null;
+  }
+
+  // Close handlers
+  if(dayDetailsClose) dayDetailsClose.addEventListener('click', closeDayDetails);
+  if(dayDetailsModal) dayDetailsModal.addEventListener('click', function(e){ if(e.target===dayDetailsModal) closeDayDetails(); });
+
+  // Bind day cell clicks (but not score circle clicks)
+  function bindDayCellClicks(root){
+    (root||document).querySelectorAll('.month-day-cell.js-day-details').forEach(function(cell){
+      cell.addEventListener('click', function(e){
+        // Don't trigger if clicking the score circle
+        if(e.target.closest('.small-circle')) return;
+        const dateStr = this.getAttribute('data-date');
+        if(dateStr) openDayDetails(dateStr);
+      });
+    });
+  }
+
+  bindDayCellClicks(document);
+  
+  // Re-bind after monthly navigation
+  const originalBindMonthNav = window.bindMonthNav;
+  if(typeof bindMonthNav === 'function'){
+    window.bindMonthNav = function(){
+      originalBindMonthNav();
+      setTimeout(()=> bindDayCellClicks(document.getElementById('monthly-container')), 100);
+    };
+  }
+
+  // ESC to close
+  document.addEventListener('keydown', function(e){
+    if(e.key==='Escape' && dayDetailsModal.style.display === 'flex'){
+      closeDayDetails();
+    }
+  });
 })();
 </script>
 {% endblock %}

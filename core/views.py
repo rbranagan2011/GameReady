@@ -3106,6 +3106,7 @@ def team_admin(request):
                 from pathlib import Path
                 import os
                 import logging
+                import shutil
                 
                 logger = logging.getLogger(__name__)
                 
@@ -3114,10 +3115,27 @@ def team_admin(request):
                 team_logos_dir = Path(media_root) / 'team_logos'
                 team_logos_dir.mkdir(parents=True, exist_ok=True)
                 
+                # Ensure write permissions
+                try:
+                    import stat
+                    team_logos_dir.chmod(stat.S_IRWXU | stat.S_IRWXG | stat.S_IROTH | stat.S_IXOTH)  # 775
+                except Exception:
+                    pass
+                
                 # Check if a new file is being uploaded
                 if 'logo' in request.FILES:
                     uploaded_file = request.FILES['logo']
                     logger.info(f"Uploading logo: {uploaded_file.name}, size: {uploaded_file.size}, MEDIA_ROOT: {media_root}")
+                    
+                    # Delete old logo file if it exists
+                    if team.logo:
+                        try:
+                            old_path = team.logo.path
+                            if os.path.exists(old_path):
+                                os.remove(old_path)
+                                logger.info(f"Deleted old logo: {old_path}")
+                        except Exception as e:
+                            logger.warning(f"Could not delete old logo: {e}")
                 
                 # Save the form - this should save both the model and the file
                 try:
@@ -3125,8 +3143,8 @@ def team_admin(request):
                     logger.info(f"Form saved successfully. Team: {team.name}")
                 except Exception as e:
                     logger.error(f"Error saving form: {e}", exc_info=True)
-                    # Re-raise to show error to user
-                    raise
+                    messages.error(request, f'Error saving logo: {str(e)}')
+                    return redirect('core:team_admin')
                 
                 # Verify file was actually saved and log details for debugging
                 if team.logo:
@@ -3142,6 +3160,11 @@ def team_admin(request):
                             if os.path.exists(team_logos_dir):
                                 files_in_dir = list(team_logos_dir.iterdir())
                                 logger.error(f"Files in team_logos directory: {[f.name for f in files_in_dir]}")
+                            # Try to find the file with a different name pattern
+                            logger.error(f"Searching for files matching pattern in {team_logos_dir}")
+                            if os.path.exists(team_logos_dir):
+                                all_files = list(team_logos_dir.rglob('*'))
+                                logger.error(f"All files in team_logos (recursive): {[str(f.relative_to(team_logos_dir)) for f in all_files]}")
                     except Exception as e:
                         logger.error(f"Error checking logo file: {e}", exc_info=True)
                 

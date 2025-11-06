@@ -15,10 +15,11 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import path, include
+from django.urls import path, include, re_path
 from django.contrib.auth import views as auth_views
 from django.conf import settings
 from django.conf.urls.static import static
+from django.views.static import serve
 from core.views import CustomLoginView
 
 urlpatterns = [
@@ -33,8 +34,9 @@ urlpatterns = [
 static_root = str(settings.STATIC_ROOT) if hasattr(settings, 'STATIC_ROOT') else settings.STATIC_ROOT
 urlpatterns += static(settings.STATIC_URL, document_root=static_root)
 
-# Serve media files (both development and production)
-# Note: For production at scale, consider using cloud storage (S3) instead
-# Ensure MEDIA_ROOT is a string for static() function
+# Serve media files explicitly (works in both development and production)
+# Django's static() helper only works with DEBUG=True, so we use serve() view directly
 media_root = str(settings.MEDIA_ROOT) if hasattr(settings, 'MEDIA_ROOT') else settings.MEDIA_ROOT
-urlpatterns += static(settings.MEDIA_URL, document_root=media_root)
+urlpatterns += [
+    re_path(r'^media/(?P<path>.*)$', serve, {'document_root': media_root}),
+]

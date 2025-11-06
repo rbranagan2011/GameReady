@@ -98,17 +98,25 @@ LOGS_DIR.mkdir(exist_ok=True)
 
 # Media files configuration for Render persistent disk
 # The persistent disk is mounted at /opt/render/project/src/media
-# If the disk is mounted, use that path; otherwise fall back to BASE_DIR / 'media'
+# Always use the persistent disk path if it exists, otherwise fall back
 PERSISTENT_DISK_MEDIA_PATH = '/opt/render/project/src/media'
-if os.path.exists(PERSISTENT_DISK_MEDIA_PATH):
-    MEDIA_ROOT = PERSISTENT_DISK_MEDIA_PATH
-else:
+
+# Check if persistent disk is mounted (try multiple times as it might mount after startup)
+import time
+media_root_set = False
+for attempt in range(3):
+    if os.path.exists(PERSISTENT_DISK_MEDIA_PATH):
+        MEDIA_ROOT = PERSISTENT_DISK_MEDIA_PATH
+        media_root_set = True
+        break
+    time.sleep(0.1)  # Brief pause in case disk is mounting
+
+if not media_root_set:
     # Fallback to default location if persistent disk not mounted
     MEDIA_ROOT = str(BASE_DIR / 'media')
 
-# Ensure MEDIA_ROOT is a string (not Path object) for Django compatibility
-if isinstance(MEDIA_ROOT, Path):
-    MEDIA_ROOT = str(MEDIA_ROOT)
+# Ensure MEDIA_ROOT is always a string (not Path object) for Django compatibility
+MEDIA_ROOT = str(MEDIA_ROOT)
 
 # Create media directory structure if it doesn't exist
 Path(MEDIA_ROOT).mkdir(parents=True, exist_ok=True)

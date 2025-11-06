@@ -3154,8 +3154,8 @@ def team_admin(request):
                         safe_name = get_valid_filename(os.path.splitext(uploaded_file.name)[0])
                         unique_filename = f"{safe_name}-{uuid.uuid4().hex[:8]}{file_ext}"
                         
-                        # Set the file path
-                        team.logo.name = f'team_logos/{unique_filename}'
+                        # Set the file path (no 'team_logos/' prefix - upload_to already handles that)
+                        team.logo.name = unique_filename
                         
                         # Ensure the directory exists
                         full_path = Path(media_root) / 'team_logos' / unique_filename

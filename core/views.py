@@ -3114,14 +3114,21 @@ def team_admin(request):
                 # Save the form
                 team = logo_form.save()
                 
-                # Verify file was actually saved
+                # Verify file was actually saved and log details for debugging
                 if team.logo:
-                    file_path = team.logo.path
-                    if not os.path.exists(file_path):
-                        # Log error but don't fail - file might be in different location
+                    try:
+                        file_path = team.logo.path
+                        file_url = team.logo.url
                         import logging
                         logger = logging.getLogger(__name__)
-                        logger.error(f"Logo file not found at expected path: {file_path}. MEDIA_ROOT: {media_root}")
+                        if os.path.exists(file_path):
+                            logger.info(f"Logo saved successfully. Path: {file_path}, URL: {file_url}, MEDIA_ROOT: {media_root}")
+                        else:
+                            logger.error(f"Logo file NOT FOUND at path: {file_path}. MEDIA_ROOT: {media_root}, File URL: {file_url}")
+                    except Exception as e:
+                        import logging
+                        logger = logging.getLogger(__name__)
+                        logger.error(f"Error checking logo file: {e}")
                 
                 # No success message - smooth UI update
                 return redirect('core:team_admin')

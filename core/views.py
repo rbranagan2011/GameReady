@@ -3105,30 +3105,45 @@ def team_admin(request):
                 from django.conf import settings
                 from pathlib import Path
                 import os
+                import logging
+                
+                logger = logging.getLogger(__name__)
                 
                 # Get MEDIA_ROOT and ensure it's a string
                 media_root = str(settings.MEDIA_ROOT)
                 team_logos_dir = Path(media_root) / 'team_logos'
                 team_logos_dir.mkdir(parents=True, exist_ok=True)
                 
-                # Save the form
-                team = logo_form.save()
+                # Check if a new file is being uploaded
+                if 'logo' in request.FILES:
+                    uploaded_file = request.FILES['logo']
+                    logger.info(f"Uploading logo: {uploaded_file.name}, size: {uploaded_file.size}, MEDIA_ROOT: {media_root}")
+                
+                # Save the form - this should save both the model and the file
+                try:
+                    team = logo_form.save()
+                    logger.info(f"Form saved successfully. Team: {team.name}")
+                except Exception as e:
+                    logger.error(f"Error saving form: {e}", exc_info=True)
+                    # Re-raise to show error to user
+                    raise
                 
                 # Verify file was actually saved and log details for debugging
                 if team.logo:
                     try:
                         file_path = team.logo.path
                         file_url = team.logo.url
-                        import logging
-                        logger = logging.getLogger(__name__)
                         if os.path.exists(file_path):
-                            logger.info(f"Logo saved successfully. Path: {file_path}, URL: {file_url}, MEDIA_ROOT: {media_root}")
+                            file_size = os.path.getsize(file_path)
+                            logger.info(f"Logo saved successfully. Path: {file_path}, URL: {file_url}, Size: {file_size} bytes, MEDIA_ROOT: {media_root}")
                         else:
                             logger.error(f"Logo file NOT FOUND at path: {file_path}. MEDIA_ROOT: {media_root}, File URL: {file_url}")
+                            # List what's actually in the directory
+                            if os.path.exists(team_logos_dir):
+                                files_in_dir = list(team_logos_dir.iterdir())
+                                logger.error(f"Files in team_logos directory: {[f.name for f in files_in_dir]}")
                     except Exception as e:
-                        import logging
-                        logger = logging.getLogger(__name__)
-                        logger.error(f"Error checking logo file: {e}")
+                        logger.error(f"Error checking logo file: {e}", exc_info=True)
                 
                 # No success message - smooth UI update
                 return redirect('core:team_admin')

@@ -3101,104 +3101,58 @@ def team_admin(request):
         elif action == 'update_logo':
             logo_form = TeamLogoForm(request.POST, request.FILES, instance=team)
             if logo_form.is_valid():
-                # Ensure media directory exists before saving
                 from django.conf import settings
                 from pathlib import Path
                 import os
                 import logging
-                import shutil
                 
                 logger = logging.getLogger(__name__)
-                
-                # Get MEDIA_ROOT and ensure it's a string
                 media_root = str(settings.MEDIA_ROOT)
                 team_logos_dir = Path(media_root) / 'team_logos'
-                team_logos_dir.mkdir(parents=True, exist_ok=True)
                 
-                # Ensure write permissions
+                # Ensure directory exists with correct permissions
+                team_logos_dir.mkdir(parents=True, exist_ok=True)
                 try:
                     import stat
-                    team_logos_dir.chmod(stat.S_IRWXU | stat.S_IRWXG | stat.S_IROTH | stat.S_IXOTH)  # 775
+                    team_logos_dir.chmod(stat.S_IRWXU | stat.S_IRWXG | stat.S_IROTH | stat.S_IXOTH)
                 except Exception:
                     pass
                 
-                # Check if a new file is being uploaded
+                # Log upload attempt
                 if 'logo' in request.FILES:
                     uploaded_file = request.FILES['logo']
                     logger.info(f"Uploading logo: {uploaded_file.name}, size: {uploaded_file.size}, MEDIA_ROOT: {media_root}")
-                    
-                    # Delete old logo file if it exists
-                    if team.logo:
-                        try:
-                            old_path = team.logo.path
-                            if os.path.exists(old_path):
-                                os.remove(old_path)
-                                logger.info(f"Deleted old logo: {old_path}")
-                        except Exception as e:
-                            logger.warning(f"Could not delete old logo: {e}")
                 
-                # Save the form - this should save both the model and the file
+                # Let Django handle the file save completely
                 try:
-                    # Save the form (this saves the model instance)
-                    team = logo_form.save(commit=False)
-                    
-                    # If a new file was uploaded, explicitly save it
-                    if 'logo' in request.FILES:
-                        # Get the uploaded file
-                        uploaded_file = request.FILES['logo']
-                        
-                        # Generate a safe filename
-                        from django.utils.text import get_valid_filename
-                        import uuid
-                        file_ext = os.path.splitext(uploaded_file.name)[1].lower()
-                        safe_name = get_valid_filename(os.path.splitext(uploaded_file.name)[0])
-                        unique_filename = f"{safe_name}-{uuid.uuid4().hex[:8]}{file_ext}"
-                        
-                        # Set the file path (no 'team_logos/' prefix - upload_to already handles that)
-                        team.logo.name = unique_filename
-                        
-                        # Ensure the directory exists
-                        full_path = Path(media_root) / 'team_logos' / unique_filename
-                        full_path.parent.mkdir(parents=True, exist_ok=True)
-                        
-                        # Write the file explicitly
-                        with open(full_path, 'wb+') as destination:
-                            for chunk in uploaded_file.chunks():
-                                destination.write(chunk)
-                        
-                        logger.info(f"File written explicitly to: {full_path}")
-                    
-                    # Now save the model instance
-                    team.save()
-                    logger.info(f"Form saved successfully. Team: {team.name}")
+                    team = logo_form.save()
+                    logger.info(f"Form saved. Team: {team.name}, Logo field: {team.logo.name if team.logo else 'None'}")
                 except Exception as e:
                     logger.error(f"Error saving form: {e}", exc_info=True)
                     messages.error(request, f'Error saving logo: {str(e)}')
                     return redirect('core:team_admin')
                 
-                # Verify file was actually saved and log details for debugging
+                # Verify the file exists on disk
                 if team.logo:
                     try:
                         file_path = team.logo.path
                         file_url = team.logo.url
+                        logger.info(f"Logo field saved. Path: {file_path}, URL: {file_url}")
+                        
                         if os.path.exists(file_path):
                             file_size = os.path.getsize(file_path)
-                            logger.info(f"Logo saved successfully. Path: {file_path}, URL: {file_url}, Size: {file_size} bytes, MEDIA_ROOT: {media_root}")
+                            logger.info(f"✓ Logo file EXISTS on disk. Size: {file_size} bytes")
                         else:
-                            logger.error(f"Logo file NOT FOUND at path: {file_path}. MEDIA_ROOT: {media_root}, File URL: {file_url}")
-                            # List what's actually in the directory
-                            if os.path.exists(team_logos_dir):
-                                files_in_dir = list(team_logos_dir.iterdir())
-                                logger.error(f"Files in team_logos directory: {[f.name for f in files_in_dir]}")
-                            # Try to find the file with a different name pattern
-                            logger.error(f"Searching for files matching pattern in {team_logos_dir}")
-                            if os.path.exists(team_logos_dir):
-                                all_files = list(team_logos_dir.rglob('*'))
-                                logger.error(f"All files in team_logos (recursive): {[str(f.relative_to(team_logos_dir)) for f in all_files]}")
+                            logger.error(f"✗ Logo file NOT FOUND on disk at: {file_path}")
+                            # List actual files
+                            if team_logos_dir.exists():
+                                actual_files = [f.name for f in team_logos_dir.iterdir() if f.is_file()]
+                                logger.error(f"Files actually in {team_logos_dir}: {actual_files}")
+                            else:
+                                logger.error(f"Directory {team_logos_dir} does not exist!")
                     except Exception as e:
-                        logger.error(f"Error checking logo file: {e}", exc_info=True)
+                        logger.error(f"Error verifying logo file: {e}", exc_info=True)
                 
-                # No success message - smooth UI update
                 return redirect('core:team_admin')
             else:
                 # Log detailed form errors for troubleshooting

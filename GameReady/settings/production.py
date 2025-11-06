@@ -119,10 +119,21 @@ if not media_root_set:
 MEDIA_ROOT = str(MEDIA_ROOT)
 
 # Create media directory structure if it doesn't exist
-Path(MEDIA_ROOT).mkdir(parents=True, exist_ok=True)
+media_path = Path(MEDIA_ROOT)
+media_path.mkdir(parents=True, exist_ok=True)
 # Also ensure team_logos subdirectory exists
-TEAM_LOGOS_DIR = Path(MEDIA_ROOT) / 'team_logos'
+TEAM_LOGOS_DIR = media_path / 'team_logos'
 TEAM_LOGOS_DIR.mkdir(parents=True, exist_ok=True)
+
+# Ensure write permissions (in case directory was created by root)
+try:
+    import stat
+    # Make directory writable by owner and group
+    media_path.chmod(stat.S_IRWXU | stat.S_IRWXG | stat.S_IROTH | stat.S_IXOTH)  # 775
+    TEAM_LOGOS_DIR.chmod(stat.S_IRWXU | stat.S_IRWXG | stat.S_IROTH | stat.S_IXOTH)  # 775
+except Exception:
+    # If we can't change permissions, that's okay - might not have permission
+    pass
 
 # Email configuration for production
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'

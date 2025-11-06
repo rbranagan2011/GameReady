@@ -95,6 +95,14 @@ LOGGING = {
 LOGS_DIR = BASE_DIR / 'logs'
 LOGS_DIR.mkdir(exist_ok=True)
 
+# Create media directory if it doesn't exist
+# This ensures team_logos and other media subdirectories can be created
+MEDIA_DIR = BASE_DIR / 'media'
+MEDIA_DIR.mkdir(exist_ok=True)
+# Also ensure team_logos subdirectory exists
+TEAM_LOGOS_DIR = MEDIA_DIR / 'team_logos'
+TEAM_LOGOS_DIR.mkdir(exist_ok=True)
+
 # Email configuration for production
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = os.environ.get('EMAIL_HOST', 'smtp.gmail.com')

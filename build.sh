@@ -10,6 +10,9 @@ pip install --upgrade pip
 # Install requirements, preferring binary wheels
 pip install --only-binary :all: -r requirements.txt || pip install -r requirements.txt
 
+# Create media directory structure
+mkdir -p media/team_logos
+
 # Collect static files
 python manage.py collectstatic --noinput
 

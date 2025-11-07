@@ -1228,12 +1228,8 @@ document.addEventListener('DOMContentLoaded', function() {
         window.GR_openHow = openHow;
         window.GR_closeHow = closeHow;
         
-        // Show on first visit
-        const seen = getCount();
-        if(seen < 1){ 
-            openHow(); 
-            setCount(seen+1); 
-        }
+        // Don't auto-show - only show when user clicks the button
+        // Removed auto-show on first visit logic
         
         // Close button handler
         if(hideBtn) {

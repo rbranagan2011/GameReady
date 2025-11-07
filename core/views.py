@@ -188,7 +188,7 @@ class CustomLoginView(BaseLoginView):
 def home(request):
     """
     Home page that redirects users based on their role.
-    For first-time visitors (not authenticated), redirect to role selection.
+    For unauthenticated users, redirect to login page.
     """
     if request.user.is_authenticated:
         try:
@@ -200,17 +200,7 @@ def home(request):
             messages.error(request, "Your profile is not set up. Please contact your administrator.")
             return redirect('logout')
     
-    # If not authenticated, check if this is a first-time visit
-    # Simple check: if no users exist or session indicates first visit
-    from django.contrib.auth.models import User
-    user_count = User.objects.count()
-    
-    # Redirect to role selection for first-time setup, otherwise login
-    if user_count == 0 or request.session.get('first_visit', True):
-        request.session['first_visit'] = False
-        return redirect('core:role_selection')
-    
-    # If not authenticated and users exist, redirect to login
+    # If not authenticated, always redirect to login page
     return redirect('login')
 
 

@@ -58,7 +58,7 @@ class ReadinessReportForm(forms.ModelForm):
     )
     muscle_soreness = forms.IntegerField(
         widget=StepperWidget(),
-        label="Muscle soreness today?",
+        label="How fresh are your muscles today?",
         initial=5
     )
     hydration = forms.IntegerField(

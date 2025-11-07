@@ -128,6 +128,55 @@
         }
     }
 </style>
+<script>
+// Show "Add to Home Screen" prompt on mobile devices
+document.addEventListener('DOMContentLoaded', function() {
+    // Check if on mobile device
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    
+    // Check if already installed (standalone mode)
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
+                         window.navigator.standalone || 
+                         document.referrer.includes('android-app://');
+    
+    // Show prompt if mobile and not already installed
+    if (isMobile && !isStandalone) {
+        // Check if user has dismissed it before (localStorage)
+        const dismissed = localStorage.getItem('addToHomeScreenDismissed');
+        if (!dismissed) {
+            const prompt = document.getElementById('addToHomeScreenPrompt');
+            if (prompt) {
+                prompt.style.display = 'block';
+            }
+        }
+    }
+    
+    // Handle dismiss button
+    const dismissBtn = document.querySelector('#addToHomeScreenPrompt .btn-close');
+    if (dismissBtn) {
+        dismissBtn.addEventListener('click', function() {
+            localStorage.setItem('addToHomeScreenDismissed', 'true');
+        });
+    }
+    
+    // Listen for beforeinstallprompt event (Chrome's native prompt)
+    let deferredPrompt;
+    window.addEventListener('beforeinstallprompt', function(e) {
+        e.preventDefault();
+        deferredPrompt = e;
+        // Show our custom prompt
+        const prompt = document.getElementById('addToHomeScreenPrompt');
+        if (prompt) {
+            prompt.style.display = 'block';
+            // Update instructions for Chrome's native prompt
+            const instructions = prompt.querySelector('ol');
+            if (instructions) {
+                instructions.innerHTML = '<li>Tap the <strong>"Add"</strong> or <strong>"Install"</strong> button that appears</li>';
+            }
+        }
+    });
+});
+</script>
 {% endblock %}
 
 {% block content %}
@@ -177,12 +226,31 @@
             </form>
             
             <div class="text-center mt-4">
-                <p class="text-muted mb-1">
-                    Don't have an account? <a href="{% url 'core:role_selection' %}" class="text-primary" style="font-weight: 600;">Sign up</a>
+                <p class="text-muted mb-3" style="font-size: 15px;">
+                    New user? <a href="{% url 'core:role_selection' %}" class="text-primary" style="font-weight: 600; font-size: 16px;">Create an account</a>
                 </p>
                 <small class="text-muted" style="opacity: 0.7;">
                     Need help? Contact your coach or administrator.
                 </small>
+            </div>
+            
+            <!-- Add to Home Screen Instructions (Mobile Only) -->
+            <div id="addToHomeScreenPrompt" class="mt-4" style="display: none;">
+                <div class="alert alert-info" style="border-radius: 12px; padding: 12px; font-size: 13px;">
+                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+                        <i class="bi bi-phone" style="font-size: 18px;"></i>
+                        <strong>Add to Home Screen</strong>
+                    </div>
+                    <div style="text-align: left; line-height: 1.6;">
+                        <p style="margin: 0 0 8px 0;">To add GameReady to your home screen:</p>
+                        <ol style="margin: 0; padding-left: 20px;">
+                            <li>Tap the <strong>menu</strong> (⋮) in the top-right</li>
+                            <li>Select <strong>"Add to Home screen"</strong> or <strong>"Install app"</strong></li>
+                            <li>Tap <strong>"Add"</strong> to confirm</li>
+                        </ol>
+                    </div>
+                    <button type="button" class="btn-close" onclick="document.getElementById('addToHomeScreenPrompt').style.display='none';" style="position: absolute; top: 8px; right: 8px;"></button>
+                </div>
             </div>
         </div>
     </div>

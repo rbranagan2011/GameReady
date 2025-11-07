@@ -1,6 +1,12 @@
 {% extends 'base.html' %}
 {% block title %}Team Administration{% endblock %}
 
+{% block extra_css %}
+<style>
+.card { background: rgba(255, 255, 255, 0.95) !important; backdrop-filter: blur(2px); }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container py-3">
     <h2 class="mb-3">Team Administration</h2>

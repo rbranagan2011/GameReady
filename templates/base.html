@@ -132,6 +132,12 @@
                     z-index: -1;
                     pointer-events: none;
                 }
+                
+                /* Make Bootstrap cards semi-transparent to show background logo */
+                .card:not(.modal-content) {
+                    background: rgba(255, 255, 255, 0.95) !important;
+                    backdrop-filter: blur(2px);
+                }
             {% endif %}
         {% endif %}
     </style>
@@ -272,7 +278,7 @@
     {% endif %}
 
     <!-- Main Content -->
-    <main class="container mt-4">
+    <main class="container mt-4" style="background: transparent;">
         {% block content %}{% endblock %}
     </main>
 

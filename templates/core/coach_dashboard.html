@@ -6,19 +6,24 @@
 {% block extra_css %}
 <style>
     /* Reduce default top margin between navbar and content on this page */
-    main.container { margin-top: 8px !important; }
+    main.container { 
+        margin-top: 8px !important; 
+        background: transparent !important; /* Allow background logo to show through */
+    }
     .dashboard-container {
         max-width: 1200px;
         margin: 0 auto;
         padding: 12px;
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        background: transparent; /* Allow background logo to show through */
     }
     
     .header {
         display: block; /* stack header content vertically */
         margin-bottom: 20px;
         padding: 8px 0 16px 0;
-        border-bottom: 1px solid #e0e0e0;
+        border-bottom: 1px solid rgba(224, 224, 224, 0.5); /* Semi-transparent border */
+        background: transparent; /* Allow background logo to show through */
     }
 
     /* Bubble grid for summary metrics */
@@ -29,11 +34,12 @@
         grid-template-columns: 1fr;
     }
     .summary-bubble {
-        background: #ffffff;
+        background: #ffffff; /* Keep boxes fully opaque white for readability */
         border: 1px solid #e5e7eb;
         border-radius: 12px;
         padding: 12px 14px;
         text-align: center;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* Add subtle shadow for depth */
     }
     .summary-label {
         font-size: 12px;
@@ -127,7 +133,7 @@
     .date-picker {
         display: flex;
         align-items: center;
-        background: #ffffff;
+        background: rgba(255, 255, 255, 0.95); /* Semi-transparent white */
         border: 2px solid #e0e0e0;
         border-radius: 50px;
         padding: 8px 16px;
@@ -136,6 +142,7 @@
         max-width: 320px;
         width: 100%;
         position: relative;
+        backdrop-filter: blur(2px); /* Optional: slight blur effect */
     }
     
     .date-picker:hover {
@@ -392,6 +399,7 @@
     
     .squad-section {
         margin-bottom: 30px;
+        background: transparent; /* Allow background logo to show through */
     }
     
     .section-title {
@@ -405,10 +413,11 @@
         width: 100%;
         border-collapse: collapse;
         table-layout: fixed; /* prevent column shifting when header content changes */
-        background: white;
+        background: rgba(255, 255, 255, 0.95); /* Semi-transparent white to allow logo visibility */
         border-radius: 8px;
         overflow: hidden;
         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        backdrop-filter: blur(2px); /* Optional: slight blur effect for better readability */
     }
     
     .squad-table th {
@@ -635,14 +644,16 @@
     
     .insights-section {
         margin-bottom: 30px;
+        background: transparent; /* Allow background logo to show through */
     }
     
     .insights-card {
-        background: white;
+        background: rgba(255, 255, 255, 0.95); /* Semi-transparent white to allow logo visibility */
         border-radius: 12px;
         padding: 20px;
         box-shadow: 0 2px 8px rgba(0,0,0,0.08);
         border: 1px solid rgba(0,0,0,0.05);
+        backdrop-filter: blur(2px); /* Optional: slight blur effect for better readability */
     }
     
     .card-title {
@@ -713,6 +724,7 @@
         text-align: center;
         padding: 60px 20px;
         color: #666;
+        background: transparent; /* Allow background logo to show through */
     }
     
     .empty-state h3 {

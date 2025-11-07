@@ -144,6 +144,12 @@ class CustomLoginView(BaseLoginView):
     """Custom login view to handle unverified email accounts."""
     template_name = 'registration/login.html'
     
+    def dispatch(self, request, *args, **kwargs):
+        # If user is already authenticated, redirect to their dashboard
+        if request.user.is_authenticated:
+            return redirect('core:home')
+        return super().dispatch(request, *args, **kwargs)
+    
     def form_valid(self, form):
         # Check if user exists but is inactive (unverified email)
         # Django's form uses 'username' field, but it can contain email or username

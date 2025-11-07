@@ -108,6 +108,14 @@ LOGIN_URL = '/login/'
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/login/'
 
+# Session settings for mobile app persistence
+# Keep users logged in when they switch apps (30 days)
+SESSION_EXPIRE_AT_BROWSER_CLOSE = False  # Sessions persist across app switches
+SESSION_COOKIE_AGE = 60 * 60 * 24 * 30  # 30 days in seconds (2592000)
+SESSION_SAVE_EVERY_REQUEST = True  # Refresh session expiry on each request
+SESSION_COOKIE_HTTPONLY = True  # Security: prevent JavaScript access to session cookie
+SESSION_COOKIE_SAMESITE = 'Lax'  # Good balance of security and functionality for mobile
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 

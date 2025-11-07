@@ -1015,6 +1015,7 @@ def player_metrics_ajax(request, athlete_id):
 def player_dashboard(request):
     """
     Minimal, mobile-first Player Overview: today circle, 7-day sparkline, streak, and two insight chips.
+    Auto-redirects to survey if after 5:30am and no report submitted today.
     """
     # Only athletes
     profile = request.user.profile
@@ -1027,6 +1028,32 @@ def player_dashboard(request):
         return redirect('logout')
 
     today = timezone.now().date()
+    
+    # Check if athlete has already submitted today's report
+    today_report = ReadinessReport.objects.filter(athlete=request.user, date_created=today).first()
+    
+    # Auto-redirect to survey if after 5:30am and no report submitted today
+    if not today_report:
+        from datetime import time as dt_time
+        import pytz
+        
+        # Get user's timezone (default to UTC if not set)
+        user_tz_str = profile.timezone or 'UTC'
+        try:
+            user_tz = pytz.timezone(user_tz_str)
+        except:
+            user_tz = pytz.UTC
+        
+        # Get current time in user's timezone
+        now_local = timezone.now().astimezone(user_tz)
+        current_time = now_local.time()
+        
+        # Check if it's after 5:30am (5:30:00)
+        cutoff_time = dt_time(5, 30, 0)
+        
+        if current_time >= cutoff_time:
+            # Redirect to survey if after 5:30am and no report today
+            return redirect('core:submit_report')
 
     # Weekly range handling (Mon-Sun)
     from datetime import timedelta

@@ -463,6 +463,8 @@ document.addEventListener('DOMContentLoaded', function(){
             container.style.opacity = 1;
             bindTsMonthNav();
             initTsProgress(container);
+            // Re-bind the "How This Works" button after AJAX update
+            bindHowItWorksButton();
             const url = new URL(window.location);
             url.searchParams.set('month', month);
             window.history.pushState({}, '', url);
@@ -471,9 +473,27 @@ document.addEventListener('DOMContentLoaded', function(){
       });
     });
   }
+  
+  // Function to bind the "How This Works" button
+  function bindHowItWorksButton() {
+    const openBtn = document.getElementById('openHowLink');
+    if (openBtn && window.GR_openHow) {
+      // Remove any existing listeners by cloning and replacing
+      const newBtn = openBtn.cloneNode(true);
+      openBtn.parentNode.replaceChild(newBtn, openBtn);
+      newBtn.addEventListener('click', function() {
+        if (window.GR_openHow) {
+          window.GR_openHow();
+        }
+      });
+    }
+  }
+  
   bindTsMonthNav();
   // Initialize progress rings on first load
   initTsProgress(document);
+  // Bind the button on initial load
+  bindHowItWorksButton();
 });
 // Initialize ring progress for schedule calendar
 function initTsProgress(root){
@@ -1383,4 +1403,138 @@ body.modal-open .calendar-grid {
 
 <!-- Add CSRF token for AJAX requests -->
 {% csrf_token %}
+
+<!-- Floating How it works bubble -->
+<div id="howItWorks" style="position:fixed; bottom:20px; right:20px; z-index:1100; width: min(520px, 92vw); max-height: 80vh; overflow-y: auto; background:#ffffff; border:1px solid rgba(0,0,0,0.08); box-shadow: 0 10px 30px rgba(0,0,0,0.15); border-radius:14px; padding:14px; display:none;">
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+        <div style="font-weight:800; font-size:16px;">Team Schedule Guide</div>
+        <button type="button" id="hideHowBtn" class="close-btn" style="background: transparent; border: none; font-size: 20px; color: #6b7280; cursor: pointer; padding: 6px 10px; transition: color 0.2s ease;">✕</button>
+    </div>
+    <div style="margin-top:8px; color:#374151; font-size:14px; line-height:1.5;">
+        <p style="margin:0 0 12px 0;">Welcome to your <strong>Team Schedule</strong>! This calendar helps you organize your team's training schedule and monitor readiness scores.</p>
+        
+        <p style="margin:0 0 12px 0;"><strong>Calendar Overview:</strong> Each day in the calendar shows:</p>
+        <ul style="margin:0 0 12px 0; padding-left: 20px;">
+            <li style="margin-bottom: 8px;">A <strong>colored badge</strong> at the top-right indicating the day type/tag (e.g., "Training", "Match", "Rest")</li>
+            <li style="margin-bottom: 8px;">A <strong>circle within the box</strong> showing the <strong>Team's Average Readiness Score</strong> for that day</li>
+        </ul>
+        
+        <p style="margin:0 0 12px 0;"><strong>Color Coding:</strong> The readiness score circles are color-coded based on the target range set for each day's tag:</p>
+        <div style="margin:0 0 12px 0; padding: 12px; background-color: #f8f9fa; border-radius: 8px;">
+            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+                <div style="width: 24px; height: 24px; border-radius: 50%; background: linear-gradient(135deg, #1B5E20 0%, #1B5E20 100%); border: 2px solid #1B5E20;"></div>
+                <span style="font-weight: 600; color: #1B5E20;">Green</span> = Score is within the target range
+            </div>
+            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+                <div style="width: 24px; height: 24px; border-radius: 50%; background: linear-gradient(135deg, #FF8F00 0%, #FF8F00 100%); border: 2px solid #FF8F00;"></div>
+                <span style="font-weight: 600; color: #FF8F00;">Orange</span> = Score is below the target range
+            </div>
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div style="width: 24px; height: 24px; border-radius: 50%; background: linear-gradient(135deg, #9333EA 0%, #9333EA 100%); border: 2px solid #9333EA;"></div>
+                <span style="font-weight: 600; color: #9333EA;">Purple</span> = Score is above the target range
+            </div>
+        </div>
+        
+        <p style="margin:0 0 12px 0;"><strong>Setting Day Types:</strong> Click on any day to assign a tag (day type) with a target readiness range. This helps you plan training intensity based on expected team readiness.</p>
+        
+        <p style="margin:0 0 12px 0;"><strong>Tag Management:</strong> Below the calendar, you can create and manage custom tags. Each tag can have its own color and target readiness range (e.g., "Match Day" might target 70-85%, while "Recovery" might target 50-65%).</p>
+        
+        <p style="margin:0 0 0 0;"><strong>Quick Actions:</strong> Use the buttons below the calendar to copy last month's schedule or clear all tags for the current month.</p>
+    </div>
+</div>
+
+<style>
+    /* How does this work button */
+    #openHowLink {
+        width: 100%;
+        padding: 12px 16px;
+        background: #f8f9fa;
+        border: 2px solid #0d6efd;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 14px;
+        color: #0d6efd;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        text-align: center;
+    }
+
+    #openHowLink:hover {
+        background: #0d6efd !important;
+        color: #ffffff !important;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(13, 110, 253, 0.3);
+    }
+
+    #openHowLink:active {
+        transform: translateY(0);
+    }
+
+    .close-btn:hover {
+        color: #1f2937;
+    }
+
+    @media (max-width: 768px) {
+        #howItWorks {
+            bottom: 10px;
+            right: 10px;
+            left: 10px;
+            width: auto;
+            max-height: 85vh;
+        }
+    }
+</style>
+
+<script>
+// How it works bubble: standalone controller and global open/close helpers
+document.addEventListener('DOMContentLoaded', function(){
+    const KEY = 'gr_team_schedule_howitworks_seen';
+    const how = document.getElementById('howItWorks');
+    if(!how) return;
+    const hideBtn = document.getElementById('hideHowBtn');
+    const openBtn = document.getElementById('openHowLink');
+    
+    function getCount(){ 
+        try{ 
+            return parseInt(localStorage.getItem(KEY)||'0',10); 
+        }catch(_){ 
+            return 0; 
+        } 
+    }
+    
+    function setCount(v){ 
+        try{ 
+            localStorage.setItem(KEY, String(v)); 
+        }catch(_){} 
+    }
+    
+    function openHow(){ 
+        how.style.display='block'; 
+    }
+    
+    function closeHow(){ 
+        how.style.display='none'; 
+    }
+    
+    // Expose globally for button click
+    window.GR_openHow = openHow;
+    window.GR_closeHow = closeHow;
+    
+    // Close button handler
+    if(hideBtn) {
+        hideBtn.addEventListener('click', function(){ 
+            closeHow(); 
+            setCount(3); 
+        });
+    }
+    
+    // Open button handler
+    if(openBtn) {
+        openBtn.addEventListener('click', function(){ 
+            openHow(); 
+        });
+    }
+});
+</script>
+
 {% endblock %}

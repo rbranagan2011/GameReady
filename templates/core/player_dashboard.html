@@ -98,17 +98,21 @@
 /* Weekly grid alignment - use consistent column sizing */
 .weekly-grid-cols { grid-template-columns: 1.2fr 1fr 0.8fr 1fr; }
 
+/* Close button hover for How it Works bubble */
+.close-btn:hover {
+    color: #1f2937 !important;
+}
+
 /* Mobile-friendly floating How it works bubble */
 @media (max-width: 768px) {
   #howItWorks {
-    top: 50% !important;
-    left: 50% !important;
-    right: auto !important;
-    bottom: auto !important;
-    transform: translate(-50%, -50%) !important;
-    width: 96vw !important;
-    max-width: 96vw !important;
-    max-height: 80vh !important;
+    bottom: 10px !important;
+    right: 10px !important;
+    left: 10px !important;
+    top: auto !important;
+    transform: none !important;
+    width: auto !important;
+    max-height: 85vh !important;
     overflow: auto !important;
     border-radius: 12px !important;
   }
@@ -253,22 +257,42 @@
   </div>
   
   <!-- Floating How it works bubble (standalone) -->
-  <div id="howItWorks" style="position:fixed; bottom:20px; right:20px; z-index:1100; width: min(520px, 92vw); background:#ffffff; border:1px solid rgba(0,0,0,0.08); box-shadow: 0 10px 30px rgba(0,0,0,0.15); border-radius:14px; padding:14px; display:none;">
+  <div id="howItWorks" style="position:fixed; bottom:20px; right:20px; z-index:1100; width: min(520px, 92vw); max-height: 80vh; overflow-y: auto; background:#ffffff; border:1px solid rgba(0,0,0,0.08); box-shadow: 0 10px 30px rgba(0,0,0,0.15); border-radius:14px; padding:14px; display:none;">
       <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
         <div style="font-weight:800; font-size:16px;">Welcome to GameReady!</div>
-        <button type="button" id="hideHowBtn" class="close-btn" style="padding:6px 10px;">✕</button>
+        <button type="button" id="hideHowBtn" class="close-btn" style="background: transparent; border: none; font-size: 20px; color: #6b7280; cursor: pointer; padding: 6px 10px; transition: color 0.2s ease;">✕</button>
       </div>
       <div style="margin-top:8px; color:#374151; font-size:14px; line-height:1.5;">
-        <p style="margin:0 0 8px 0;">This app uses your self‑reported health metrics to calculate your <strong>Game Ready Score</strong>. Coaches use it to train and play the team appropriately without increasing injury risk. <strong>Consistent and truthful reporting helps everyone perform better.</strong></p>
-        <p style="margin:0 0 8px 0;">At the top, you’ll see whether you logged today and your <strong>current availability status</strong>.</p>
-        <p style="margin:0 0 8px 0;">The Player Dashboard shows a <strong>Weekly</strong> and <strong>Monthly</strong> overview. <strong>Tap your score circle</strong> on any day to view your seven metrics for that date. Use the arrows to move between weeks and months.</p>
-        <p style="margin:0 0 8px 0;">On the monthly calendar, you'll see <strong>colored dots</strong> in the top-right of each day showing your scheduled activities from all teams. <strong>Click any day</strong> (not the score circle) to see the full schedule with target ranges and add your own <strong>personal labels</strong> (like "Gym session" or "Personal training") that your coach can see.</p>
-        <p style="margin:0 0 8px 0;">Each day has a coach‑assigned <strong>tag</strong> with a target score range. Ring colours mean:
-          <span style="color:#1B5E20; font-weight:700;"> Green = In range</span>,
-          <span style="color:#FF8F00; font-weight:700;"> Orange = Below</span>,
-          <span style="color:#9333EA; font-weight:700;"> Purple = Above</span>.
-        </p>
-        <p style="margin:0 0 8px 0;">If you’re <strong>injured</strong> or <strong>sick</strong>, set it via <em>Current status</em> so your coach knows.</p>
+        <p style="margin:0 0 12px 0;">This app uses your self‑reported health metrics to calculate your <strong>Game Ready Score</strong>. Coaches use it to train and play the team appropriately without increasing injury risk. <strong>Consistent and truthful reporting helps everyone perform better.</strong></p>
+        
+        <p style="margin:0 0 12px 0;"><strong>Dashboard Overview:</strong> At the top, you'll see whether you logged today and your <strong>current availability status</strong>.</p>
+        
+        <p style="margin:0 0 12px 0;"><strong>Weekly & Monthly Views:</strong> The Player Dashboard shows a <strong>Weekly</strong> and <strong>Monthly</strong> overview. <strong>Tap your score circle</strong> on any day to view your seven metrics for that date. Use the arrows to move between weeks and months.</p>
+        
+        <p style="margin:0 0 12px 0;"><strong>Calendar Features:</strong> On the monthly calendar, you'll see:</p>
+        <ul style="margin:0 0 12px 0; padding-left: 20px;">
+            <li style="margin-bottom: 8px;"><strong>Colored dots</strong> in the top-right of each day showing your scheduled activities from all teams</li>
+            <li style="margin-bottom: 8px;"><strong>Click any day</strong> (not the score circle) to see the full schedule with target ranges</li>
+            <li style="margin-bottom: 8px;">Add your own <strong>personal labels</strong> (like "Gym session" or "Personal training") that your coach can see</li>
+        </ul>
+        
+        <p style="margin:0 0 12px 0;"><strong>Color Coding:</strong> Each day has a coach‑assigned <strong>tag</strong> with a target score range. The readiness score circles are color-coded based on how your score compares to the target range:</p>
+        <div style="margin:0 0 12px 0; padding: 12px; background-color: #f8f9fa; border-radius: 8px;">
+            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+                <div style="width: 24px; height: 24px; border-radius: 50%; background: linear-gradient(135deg, #1B5E20 0%, #1B5E20 100%); border: 2px solid #1B5E20;"></div>
+                <span style="font-weight: 600; color: #1B5E20;">Green</span> = Score is within the target range
+            </div>
+            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+                <div style="width: 24px; height: 24px; border-radius: 50%; background: linear-gradient(135deg, #FF8F00 0%, #FF8F00 100%); border: 2px solid #FF8F00;"></div>
+                <span style="font-weight: 600; color: #FF8F00;">Orange</span> = Score is below the target range
+            </div>
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div style="width: 24px; height: 24px; border-radius: 50%; background: linear-gradient(135deg, #9333EA 0%, #9333EA 100%); border: 2px solid #9333EA;"></div>
+                <span style="font-weight: 600; color: #9333EA;">Purple</span> = Score is above the target range
+            </div>
+        </div>
+        
+        <p style="margin:0 0 0 0;">If you're <strong>injured</strong> or <strong>sick</strong>, set it via <em>Current status</em> so your coach knows.</p>
       </div>
       <!-- No action chips in the bubble per request -->
     </div>

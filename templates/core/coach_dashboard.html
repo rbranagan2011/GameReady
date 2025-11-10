@@ -1366,7 +1366,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 {% if player.pill == 'risk' %}
                                     <span class="mini-pill high-risk inf-pill" data-expl="Below target range 3 consecutive days" title="Below target range 3 consecutive days">risk</span>
                                 {% elif player.pill == 'rest' %}
-                                    <span class="mini-pill monitor inf-pill" data-expl="High soreness and low energy today" title="High soreness and low energy today">rest</span>
+                                    <span class="mini-pill monitor inf-pill" data-expl="Low muscle freshness and low energy today" title="Low muscle freshness and low energy today">rest</span>
                                 {% elif player.pill == 'non' %}
                                     <span class="mini-pill inf-pill" style="background: #f0f0f0; color:#666; border-color:#e0e0e0;" data-expl="Missed 2 of last 3 days" title="Missed 2 of last 3 days">non</span>
                                 {% elif player.pill == 'mlt' %}
@@ -1441,17 +1441,48 @@ document.addEventListener('DOMContentLoaded', function() {
         <button type="button" id="hideHowBtn" class="close-btn">✕</button>
     </div>
     <div style="margin-top:8px; color:#374151; font-size:14px; line-height:1.5;">
-        <p style="margin:0 0 8px 0;">Welcome to your <strong>Coach Dashboard</strong>! This is your central hub for monitoring your team's readiness and wellness. Use this guide to make the most of your dashboard.</p>
-        <p style="margin:0 0 8px 0;"><strong>Summary Metrics:</strong> At the top, you'll see key metrics for today including the <strong>Target Recovery Range</strong> (set via tags or team defaults), <strong>Team Average</strong> readiness score, <strong>Compliance</strong> percentage, and counts of athletes above, in, or below target range.</p>
-        <p style="margin:0 0 8px 0;"><strong>Squad Metrics Snapshot:</strong> This section shows average scores across all seven wellness categories (sleep, fatigue, soreness, stress, mood, energy, readiness). These help you identify patterns affecting the entire team.</p>
-        <p style="margin:0 0 8px 0;"><strong>Squad List:</strong> The main table shows each athlete's readiness score for today. <strong>Click any readiness circle</strong> to view their detailed seven-metric breakdown. Color coding indicates:
-            <span style="color:#1B5E20; font-weight:700;"> Green = In target range</span>,
-            <span style="color:#FF8F00; font-weight:700;"> Orange = Below target</span>,
-            <span style="color:#9333EA; font-weight:700;"> Purple = Above target</span>.
-        </p>
-        <p style="margin:0 0 8px 0;"><strong>Info Pills:</strong> Look for colored indicators next to player names: <strong>risk</strong> (below target 3+ days), <strong>rest</strong> (high soreness/low energy), <strong>non</strong> (missed reports), or <strong>MLT</strong> (multiple teams). Click any pill for details.</p>
-        <p style="margin:0 0 8px 0;"><strong>Date Navigation:</strong> Use the arrows to view different days. The <strong>Day Type</strong> shows the tag assigned to the selected date. You can also click player names to view their full dashboard and historical data.</p>
-        <p style="margin:0 0 8px 0;"><strong>Team Management:</strong> Use the navigation menu to access <strong>Team Schedule</strong> (set tags and target ranges), <strong>Tag Management</strong> (create custom day types), and other team settings.</p>
+        <p style="margin:0 0 12px 0;">Welcome to your <strong>Coach Dashboard</strong>! This is your central hub for monitoring your team's readiness and wellness. Use this guide to make the most of your dashboard.</p>
+        
+        <p style="margin:0 0 12px 0;"><strong>Summary Metrics:</strong> At the top, you'll see key metrics for today including:</p>
+        <ul style="margin:0 0 12px 0; padding-left: 20px;">
+            <li style="margin-bottom: 8px;">The <strong>Target Recovery Range</strong> (set via tags or team defaults)</li>
+            <li style="margin-bottom: 8px;"><strong>Team Average</strong> readiness score</li>
+            <li style="margin-bottom: 8px;"><strong>Compliance</strong> percentage</li>
+            <li style="margin-bottom: 8px;">Counts of athletes above, in, or below target range</li>
+        </ul>
+        
+        <p style="margin:0 0 12px 0;"><strong>Squad Metrics Snapshot:</strong> This section shows average scores across all seven wellness categories (sleep, energy, muscle freshness, mood, motivation, nutrition, hydration). These help you identify patterns affecting the entire team.</p>
+        
+        <p style="margin:0 0 12px 0;"><strong>Squad List:</strong> The main table shows each athlete's readiness score for today. <strong>Click any readiness circle</strong> to view their detailed seven-metric breakdown.</p>
+        
+        <p style="margin:0 0 12px 0;"><strong>Color Coding:</strong> The readiness score circles are color-coded based on the target range set for each day's tag:</p>
+        <div style="margin:0 0 12px 0; padding: 12px; background-color: #f8f9fa; border-radius: 8px;">
+            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+                <div style="width: 24px; height: 24px; border-radius: 50%; background: linear-gradient(135deg, #1B5E20 0%, #1B5E20 100%); border: 2px solid #1B5E20;"></div>
+                <span style="font-weight: 600; color: #1B5E20;">Green</span> = Score is within the target range
+            </div>
+            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+                <div style="width: 24px; height: 24px; border-radius: 50%; background: linear-gradient(135deg, #FF8F00 0%, #FF8F00 100%); border: 2px solid #FF8F00;"></div>
+                <span style="font-weight: 600; color: #FF8F00;">Orange</span> = Score is below the target range
+            </div>
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div style="width: 24px; height: 24px; border-radius: 50%; background: linear-gradient(135deg, #9333EA 0%, #9333EA 100%); border: 2px solid #9333EA;"></div>
+                <span style="font-weight: 600; color: #9333EA;">Purple</span> = Score is above the target range
+            </div>
+        </div>
+        
+        <p style="margin:0 0 12px 0;"><strong>Info Pills:</strong> Look for colored indicators next to player names:</p>
+        <ul style="margin:0 0 12px 0; padding-left: 20px;">
+            <li style="margin-bottom: 8px;"><strong>risk</strong> = Below target 3+ days</li>
+            <li style="margin-bottom: 8px;"><strong>rest</strong> = Low muscle freshness/low energy</li>
+            <li style="margin-bottom: 8px;"><strong>non</strong> = Missed reports</li>
+            <li style="margin-bottom: 8px;"><strong>MLT</strong> = Multiple teams</li>
+        </ul>
+        <p style="margin:0 0 12px 0;">Click any pill for details.</p>
+        
+        <p style="margin:0 0 12px 0;"><strong>Date Navigation:</strong> Use the arrows to view different days. The <strong>Day Type</strong> shows the tag assigned to the selected date. You can also click player names to view their full dashboard and historical data.</p>
+        
+        <p style="margin:0 0 0 0;"><strong>Team Management:</strong> Use the navigation menu to access <strong>Team Schedule</strong> (set tags and target ranges), <strong>Tag Management</strong> (create custom day types), and other team settings.</p>
     </div>
 </div>
 

@@ -117,45 +117,62 @@
         </div>
         
         <div class="feature-request-body">
-            <div class="info-box">
-                <i class="bi bi-info-circle"></i>
-                <strong>We value your feedback!</strong> Your suggestions help us make GameReady better for everyone. 
-                Whether it's a new feature, an improvement, or a bug report, we'd love to hear from you.
-            </div>
-            
-            <form method="post">
-                {% csrf_token %}
+            {% if submitted %}
+                <!-- Thank You Message -->
+                <div class="text-center py-5">
+                    <div class="mb-4">
+                        <i class="bi bi-check-circle-fill" style="font-size: 4rem; color: #28a745;"></i>
+                    </div>
+                    <h3 class="mb-3" style="color: #333;">Thank You!</h3>
+                    <p class="mb-4" style="font-size: 1.1rem; color: #6c757d;">
+                        Your feature request has been submitted successfully. We appreciate your feedback and will review it soon.
+                    </p>
+                    <a href="{% url 'core:feature_request' %}?new=1" class="btn btn-submit btn-lg">
+                        <i class="bi bi-plus-circle"></i> Submit Another Request
+                    </a>
+                </div>
+            {% else %}
+                <!-- Feature Request Form -->
+                <div class="info-box">
+                    <i class="bi bi-info-circle"></i>
+                    <strong>We value your feedback!</strong> Your suggestions help us make GameReady better for everyone. 
+                    Whether it's a new feature, an improvement, or a bug report, we'd love to hear from you.
+                </div>
                 
-                <div class="mb-4">
-                    <label for="{{ form.message.id_for_label }}" class="form-label">
-                        <i class="bi bi-chat-left-text"></i> {{ form.message.label }}
-                    </label>
-                    {{ form.message }}
-                    {% if form.message.errors %}
-                        <div class="text-danger">
-                            {% for error in form.message.errors %}
-                                <div><i class="bi bi-exclamation-circle"></i> {{ error }}</div>
+                <form method="post">
+                    {% csrf_token %}
+                    
+                    <div class="mb-4">
+                        <label for="{{ form.message.id_for_label }}" class="form-label">
+                            <i class="bi bi-chat-left-text"></i> {{ form.message.label }}
+                        </label>
+                        {{ form.message }}
+                        {% if form.message.errors %}
+                            <div class="text-danger">
+                                {% for error in form.message.errors %}
+                                    <div><i class="bi bi-exclamation-circle"></i> {{ error }}</div>
+                                {% endfor %}
+                            </div>
+                        {% elif form.message.help_text %}
+                            <div class="form-text">{{ form.message.help_text }}</div>
+                        {% endif %}
+                    </div>
+                    
+                    {% if form.non_field_errors %}
+                        <div class="alert alert-danger">
+                            {% for error in form.non_field_errors %}
+                                <div><i class="bi bi-exclamation-triangle"></i> {{ error }}</div>
                             {% endfor %}
                         </div>
-                    {% elif form.message.help_text %}
-                        <div class="form-text">{{ form.message.help_text }}</div>
                     {% endif %}
-                </div>
-                
-                {% if form.non_field_errors %}
-                    <div class="alert alert-danger">
-                        {% for error in form.non_field_errors %}
-                            <div><i class="bi bi-exclamation-triangle"></i> {{ error }}</div>
-                        {% endfor %}
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <button type="submit" class="btn btn-submit btn-lg">
+                            <i class="bi bi-send-fill"></i> Submit Feature Request
+                        </button>
                     </div>
-                {% endif %}
-                
-                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                    <button type="submit" class="btn btn-submit btn-lg">
-                        <i class="bi bi-send-fill"></i> Submit Feature Request
-                    </button>
-                </div>
-            </form>
+                </form>
+            {% endif %}
         </div>
     </div>
 </div>

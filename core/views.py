@@ -390,7 +390,7 @@ def coach_dashboard(request):
             if len(athlete_teams) > 1:
                 pill = 'mlt'
             
-            # 1) REST: high soreness (low score) and low energy today
+            # 1) REST: low muscle freshness (low score) and low energy today
             # (only set if not already MLT, or override MLT if rest is more important)
             rest_pill = None
             try:
@@ -510,7 +510,7 @@ def coach_dashboard(request):
         metric_names = {
             'sleep_quality': 'Sleep',
             'energy_fatigue': 'Energy',
-            'muscle_soreness': 'Soreness',
+            'muscle_soreness': 'Muscle Freshness',
             'mood_stress': 'Mood',
             'motivation': 'Motivation',
             'nutrition_quality': 'Nutrition',
@@ -534,7 +534,7 @@ def coach_dashboard(request):
                     'key': 'energy_fatigue'
                 },
                 {
-                    'name': 'Soreness',
+                    'name': 'Muscle Freshness',
                     'score': round(metric_averages['muscle_soreness']),
                     'key': 'muscle_soreness'
                 },
@@ -972,7 +972,7 @@ def player_metrics_ajax(request, athlete_id):
                 'key': 'energy_fatigue'
             },
             {
-                'name': 'Soreness',
+                'name': 'Muscle Freshness',
                 'score': round(report.muscle_soreness),
                 'key': 'muscle_soreness'
             },
@@ -1118,7 +1118,7 @@ def player_dashboard(request):
         metric_map = {
             'Sleep': today_report.sleep_quality,
             'Energy': today_report.energy_fatigue,
-            'Soreness': today_report.muscle_soreness,
+            'Muscle Freshness': today_report.muscle_soreness,
             'Mood': today_report.mood_stress,
             'Motivation': today_report.motivation,
             'Nutrition': today_report.nutrition_quality,
@@ -1399,7 +1399,7 @@ def player_metrics_self_ajax(request):
         metrics = [
             {'name': 'Sleep', 'score': round(report.sleep_quality), 'key': 'sleep_quality'},
             {'name': 'Energy', 'score': round(report.energy_fatigue), 'key': 'energy_fatigue'},
-            {'name': 'Soreness', 'score': round(report.muscle_soreness), 'key': 'muscle_soreness'},
+            {'name': 'Muscle Freshness', 'score': round(report.muscle_soreness), 'key': 'muscle_soreness'},
             {'name': 'Mood', 'score': round(report.mood_stress), 'key': 'mood_stress'},
             {'name': 'Motivation', 'score': round(report.motivation), 'key': 'motivation'},
             {'name': 'Nutrition', 'score': round(report.nutrition_quality), 'key': 'nutrition_quality'},
@@ -2678,9 +2678,16 @@ def team_setup_coach(request):
         if action == 'create':
             create_form = TeamCreationForm(request.POST)
             if create_form.is_valid():
+                profile = request.user.profile
+                
+                # Check team limit (max 5 teams per coach)
+                coach_teams_list = profile.get_teams()
+                if len(coach_teams_list) >= 5:
+                    messages.error(request, 'You have reached the maximum limit of 5 teams. Please leave a team before creating a new one.')
+                    return redirect('core:team_setup_coach')
+                
                 team = create_form.save()
                 # Assign coach to team
-                profile = request.user.profile
                 # Add to teams ManyToMany
                 profile.teams.add(team)
                 # Set as primary team if no primary team
@@ -2712,6 +2719,11 @@ def team_setup_coach(request):
                 if team in coach_teams_list:
                     messages.info(request, f'You are already a member of "{team.name}".')
                     return redirect('core:coach_dashboard')
+                
+                # Check team limit (max 5 teams per coach)
+                if len(coach_teams_list) >= 5:
+                    messages.error(request, 'You have reached the maximum limit of 5 teams. Please leave a team before joining a new one.')
+                    return redirect('core:team_setup_coach')
                 
                 # Add coach to team (ManyToMany)
                 profile.teams.add(team)
@@ -2832,6 +2844,12 @@ def join_team_link(request, code):
             # Assign user to team
             profile = user.profile
             if user.profile.role == Profile.Role.COACH:
+                # Check team limit for coaches (max 5 teams per coach)
+                coach_teams_list = profile.get_teams()
+                if len(coach_teams_list) >= 5:
+                    messages.error(request, 'You have reached the maximum limit of 5 teams. Please leave a team before joining a new one.')
+                    return redirect('core:account_management')
+                
                 # Coaches can be on multiple teams - use ManyToMany
                 profile.teams.add(team)
                 # Set as primary if no primary team
@@ -3202,20 +3220,64 @@ def team_admin(request):
                     profile = member.profile
                 except (User.DoesNotExist, Profile.DoesNotExist):
                     profile = None
-                if profile and profile.team_id == team.id:
-                    # Prevent removing the last coach
-                    if profile.role == Profile.Role.COACH:
-                        num_coaches = User.objects.filter(profile__team=team, profile__role=Profile.Role.COACH).count()
-                        if num_coaches <= 1:
-                            messages.error(request, 'Cannot remove the last coach on the team.')
+                if profile:
+                    # Check if member is in team (either primary or ManyToMany)
+                    is_primary_member = profile.team_id == team.id
+                    is_manytomany_member = team in profile.teams.all()
+                    
+                    if is_primary_member or is_manytomany_member:
+                        # Prevent removing the last coach
+                        if profile.role == Profile.Role.COACH:
+                            # Count coaches in team (both primary and ManyToMany)
+                            primary_coaches = User.objects.filter(profile__team=team, profile__role=Profile.Role.COACH).distinct()
+                            manytomany_coaches = User.objects.filter(profile__teams=team, profile__role=Profile.Role.COACH).distinct()
+                            all_coaches = (primary_coaches | manytomany_coaches).distinct()
+                            
+                            if all_coaches.count() <= 1:
+                                messages.error(request, 'Cannot remove the last coach on the team.')
+                            else:
+                                # Remove from primary team
+                                if is_primary_member:
+                                    profile.team = None
+                                # Remove from ManyToMany
+                                if is_manytomany_member:
+                                    profile.teams.remove(team)
+                                profile.save()
+                                
+                                # Check if team has any members left
+                                primary_members = User.objects.filter(profile__team=team).distinct()
+                                manytomany_members = User.objects.filter(profile__teams=team).distinct()
+                                all_members = (primary_members | manytomany_members).distinct()
+                                
+                                # If no members left, delete the team
+                                if not all_members.exists():
+                                    team_name = team.name
+                                    team.delete()
+                                    messages.success(request, f'Removed {member.get_full_name() or member.username} from team. The team "{team_name}" has been deleted as it had no members.')
+                                    return redirect('core:coach_dashboard')
+                                else:
+                                    messages.success(request, f'Removed {member.get_full_name() or member.username} from team.')
                         else:
-                            profile.team = None
+                            # Remove athlete from team
+                            if is_primary_member:
+                                profile.team = None
+                            if is_manytomany_member:
+                                profile.teams.remove(team)
                             profile.save()
-                            messages.success(request, f'Removed {member.get_full_name() or member.username} from team.')
-                    else:
-                        profile.team = None
-                        profile.save()
-                        messages.success(request, f'Removed {member.get_full_name() or member.username} from team.')
+                            
+                            # Check if team has any members left
+                            primary_members = User.objects.filter(profile__team=team).distinct()
+                            manytomany_members = User.objects.filter(profile__teams=team).distinct()
+                            all_members = (primary_members | manytomany_members).distinct()
+                            
+                            # If no members left, delete the team
+                            if not all_members.exists():
+                                team_name = team.name
+                                team.delete()
+                                messages.success(request, f'Removed {member.get_full_name() or member.username} from team. The team "{team_name}" has been deleted as it had no members.')
+                                return redirect('core:coach_dashboard')
+                            else:
+                                messages.success(request, f'Removed {member.get_full_name() or member.username} from team.')
                 else:
                     messages.error(request, 'Member not found on this team.')
                 return redirect('core:team_admin')
@@ -3256,6 +3318,10 @@ def feature_request(request):
     View for users to submit feature requests and feedback.
     Sends email to rian@getreadyapp.com
     """
+    # Check if this is a request to show the form again (after submission)
+    show_form_again = request.GET.get('new', '') == '1'
+    submitted = False
+    
     form = FeatureRequestForm()
     
     if request.method == 'POST':
@@ -3294,8 +3360,9 @@ This feature request was submitted through the GameReady app.
                     recipient_list=['rian@getreadyapp.com'],
                     fail_silently=False,
                 )
-                messages.success(request, 'Thank you for your feedback! Your feature request has been submitted.')
-                return redirect('core:feature_request')
+                submitted = True
+                # Reset form for potential new submission
+                form = FeatureRequestForm()
             except Exception as e:
                 messages.error(request, 'There was an error submitting your request. Please try again later.')
                 # Log error in production
@@ -3303,6 +3370,8 @@ This feature request was submitted through the GameReady app.
     
     context = {
         'form': form,
+        'submitted': submitted,
+        'show_form': show_form_again or not submitted,
     }
     return render(request, 'core/feature_request.html', context)
 
@@ -3316,11 +3385,12 @@ def account_management(request):
     user = request.user
     profile = user.profile
     
-    # Initialize forms
-    profile_form = UpdateProfileForm(user=user)
-    password_form = ChangePasswordForm(user=user)
-    join_team_form = JoinTeamByCodeForm(user=user)
-    reminder_form = ReminderSettingsForm(profile=profile)
+    # Initialize forms (will be set in POST handlers if needed)
+    profile_form = None
+    password_form = None
+    join_team_form = None
+    reminder_form = None
+    create_team_form = None
     
     # Get user's teams
     user_teams = profile.get_teams()
@@ -3353,6 +3423,13 @@ def account_management(request):
                 return redirect('core:account_management')
         
         elif action == 'join_team':
+            # Check team limit for coaches (max 5 teams per coach)
+            if profile.role == Profile.Role.COACH:
+                coach_teams = profile.get_teams()
+                if len(coach_teams) >= 5:
+                    messages.error(request, 'You have reached the maximum limit of 5 teams. Please leave a team before joining a new one.')
+                    return redirect('core:account_management')
+            
             join_team_form = JoinTeamByCodeForm(request.POST, user=user)
             if join_team_form.is_valid():
                 try:
@@ -3382,7 +3459,20 @@ def account_management(request):
                         profile.team = None
                     profile.save()
                 
-                messages.success(request, f'Left team "{team.name}" successfully.')
+                # Check if team has any members left (both primary and ManyToMany)
+                # Get all unique members: primary_members (ForeignKey) + members (ManyToMany)
+                primary_members = User.objects.filter(profile__team=team).distinct()
+                manytomany_members = User.objects.filter(profile__teams=team).distinct()
+                all_members = (primary_members | manytomany_members).distinct()
+                
+                # If no members left, delete the team
+                if not all_members.exists():
+                    team_name = team.name
+                    team.delete()
+                    messages.success(request, f'Left team "{team_name}" successfully. The team has been deleted as it had no members.')
+                else:
+                    messages.success(request, f'Left team "{team.name}" successfully.')
+                
                 return redirect('core:account_management')
             except Team.DoesNotExist:
                 messages.error(request, 'Team not found.')
@@ -3395,18 +3485,56 @@ def account_management(request):
                 reminder_form.save()
                 messages.success(request, 'Reminder settings updated successfully!')
                 return redirect('core:account_management')
+        
+        elif action == 'create_team':
+            # Only allow coaches to create teams
+            if profile.role != Profile.Role.COACH:
+                messages.error(request, 'Only coaches can create teams.')
+                return redirect('core:account_management')
+            
+            # Check team limit (max 5 teams per coach)
+            coach_teams = profile.get_teams()
+            if len(coach_teams) >= 5:
+                messages.error(request, 'You have reached the maximum limit of 5 teams. Please leave a team before creating a new one.')
+                return redirect('core:account_management')
+            
+            create_team_form = TeamCreationForm(request.POST)
+            if create_team_form.is_valid():
+                team = create_team_form.save()
+                # Add coach to team (ManyToMany)
+                profile.teams.add(team)
+                # Set as primary team if no primary team
+                if not profile.team:
+                    profile.team = team
+                    profile.save()
+                else:
+                    profile.save()
+                # Set as active team in session
+                request.session['active_team_id'] = team.id
+                messages.success(request, f'Successfully created team "{team.name}"!')
+                return redirect('core:account_management')
+            # If form is invalid, it will be passed to template with errors
     
-    # Populate forms with current data
-    profile_form = UpdateProfileForm(user=user)
-    password_form = ChangePasswordForm(user=user)
-    join_team_form = JoinTeamByCodeForm(user=user)
-    reminder_form = ReminderSettingsForm(profile=profile)
+    # Populate forms with current data (only if not already set from POST)
+    if profile_form is None:
+        profile_form = UpdateProfileForm(user=user)
+    if password_form is None:
+        password_form = ChangePasswordForm(user=user)
+    if join_team_form is None:
+        join_team_form = JoinTeamByCodeForm(user=user)
+    if reminder_form is None:
+        reminder_form = ReminderSettingsForm(profile=profile)
+    
+    # Team creation form for coaches
+    if profile.role == Profile.Role.COACH and create_team_form is None:
+        create_team_form = TeamCreationForm()
     
     context = {
         'profile_form': profile_form,
         'password_form': password_form,
         'join_team_form': join_team_form,
         'reminder_form': reminder_form,
+        'create_team_form': create_team_form,
         'user_teams': user_teams,
         'user': user,
         'profile': profile,

@@ -186,6 +186,13 @@
   {% endif %}
   <div class="section" style="text-align:center; font-weight:700; font-size:18px;">
     {% if athlete_name %}{{ athlete_name }}{% else %}{{ request.user.first_name|default:request.user.username }}{% endif %}'s Dashboard
+    {% if user.is_superuser %}
+    <div style="margin-top: 1rem;">
+      <a href="{% url 'core:management_dashboard' %}" class="btn btn-primary btn-sm">
+        <i class="bi bi-speedometer2"></i> Management Dashboard
+      </a>
+    </div>
+    {% endif %}
   </div>
 
   <!-- New hero: big conditioning score + side info -->

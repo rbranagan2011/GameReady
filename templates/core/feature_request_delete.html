@@ -1,0 +1,105 @@
+{% extends 'base.html' %}
+
+{% block title %}Delete Feature Request - GameReady{% endblock %}
+
+{% block extra_css %}
+<style>
+    .delete-container {
+        max-width: 600px;
+        margin: 0 auto;
+    }
+    
+    .delete-card {
+        border: none;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        border-radius: 12px;
+        overflow: hidden;
+    }
+    
+    .delete-header {
+        background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+        color: white;
+        padding: 2rem;
+        text-align: center;
+    }
+    
+    .delete-header h2 {
+        margin: 0;
+        font-size: 1.75rem;
+        font-weight: 600;
+    }
+    
+    .delete-body {
+        padding: 2.5rem;
+        background: white;
+    }
+    
+    .warning-box {
+        background: #fff3cd;
+        border: 2px solid #ffc107;
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+    }
+    
+    .warning-box i {
+        color: #856404;
+        font-size: 1.5rem;
+        margin-right: 0.75rem;
+    }
+    
+    .request-preview {
+        background: #f8f9fa;
+        border-left: 4px solid #667eea;
+        padding: 1.25rem;
+        border-radius: 6px;
+        margin-bottom: 2rem;
+    }
+    
+    .request-preview h5 {
+        margin: 0 0 0.5rem 0;
+        color: #333;
+    }
+    
+    .request-preview p {
+        margin: 0;
+        color: #6c757d;
+        font-size: 0.9rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="delete-container py-5">
+    <div class="card delete-card">
+        <div class="delete-header">
+            <h2><i class="bi bi-exclamation-triangle-fill"></i> Delete Feature Request</h2>
+        </div>
+        
+        <div class="delete-body">
+            <div class="warning-box">
+                <i class="bi bi-exclamation-triangle-fill"></i>
+                <strong>Warning:</strong> This action cannot be undone. Deleting this feature request will permanently remove it along with all comments and upvotes.
+            </div>
+            
+            <div class="request-preview">
+                <h5>{{ feature_request.title }}</h5>
+                <p>{{ feature_request.description|truncatewords:30 }}</p>
+            </div>
+            
+            <form method="post">
+                {% csrf_token %}
+                <div class="d-grid gap-2 d-md-flex justify-content-md-between">
+                    <a href="{% url 'core:feature_request_detail' feature_request.id %}" class="btn btn-outline-secondary btn-lg">
+                        <i class="bi bi-arrow-left"></i> Cancel
+                    </a>
+                    <button type="submit" class="btn btn-danger btn-lg">
+                        <i class="bi bi-trash-fill"></i> Yes, Delete This Request
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

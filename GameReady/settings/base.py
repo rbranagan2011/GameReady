@@ -98,6 +98,13 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 # Use WhiteNoise to serve static files in production with caching and compression
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
+# PostHog Analytics Configuration
+# Get API key from environment variable (set in production)
+# For local development, you can add POSTHOG_API_KEY to .env file
+POSTHOG_API_KEY = os.environ.get('POSTHOG_API_KEY', '')
+POSTHOG_HOST = os.environ.get('POSTHOG_HOST', 'https://app.posthog.com')
+POSTHOG_ENABLED = bool(POSTHOG_API_KEY)  # Only enable if API key is set
+
 # Media files (user uploads)
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'

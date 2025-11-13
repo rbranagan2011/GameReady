@@ -1,0 +1,251 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ target_user.get_full_name|default:target_user.username }} - Management View{% endblock %}
+
+{% block extra_css %}
+<style>
+    .management-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 2rem 1rem;
+    }
+    
+    .user-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 2rem;
+        border-radius: 8px;
+        margin-bottom: 2rem;
+    }
+    
+    .user-header h1 {
+        margin: 0;
+        font-size: 2rem;
+        font-weight: 600;
+    }
+    
+    .user-meta {
+        margin-top: 1rem;
+        display: flex;
+        gap: 2rem;
+        font-size: 0.9rem;
+        opacity: 0.9;
+    }
+    
+    .section-card {
+        background: white;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .section-card h2 {
+        margin: 0 0 1.5rem 0;
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: #333;
+        border-bottom: 2px solid #667eea;
+        padding-bottom: 0.5rem;
+    }
+    
+    .info-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1rem;
+    }
+    
+    .info-item {
+        padding: 1rem;
+        background: #f8f9fa;
+        border-radius: 6px;
+    }
+    
+    .info-label {
+        font-size: 0.875rem;
+        color: #6c757d;
+        font-weight: 600;
+        margin-bottom: 0.25rem;
+    }
+    
+    .info-value {
+        font-size: 1.1rem;
+        color: #333;
+        font-weight: 600;
+    }
+    
+    .badge {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+    
+    .badge-coach {
+        background: #e3f2fd;
+        color: #1976d2;
+    }
+    
+    .badge-athlete {
+        background: #e8f5e9;
+        color: #2e7d32;
+    }
+    
+    .table-responsive {
+        overflow-x: auto;
+    }
+    
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    
+    th, td {
+        padding: 0.75rem;
+        text-align: left;
+        border-bottom: 1px solid #dee2e6;
+    }
+    
+    th {
+        background: #f8f9fa;
+        font-weight: 600;
+        color: #333;
+    }
+    
+    tr:hover {
+        background: #f8f9fa;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="management-container">
+    <div class="user-header">
+        <h1><i class="bi bi-person-circle"></i> {{ target_user.get_full_name|default:target_user.username }}</h1>
+        <div class="user-meta">
+            <span><strong>Username:</strong> {{ target_user.username }}</span>
+            <span><strong>Email:</strong> {{ target_user.email }}</span>
+            {% if profile %}
+                <span><strong>Role:</strong> 
+                    <span class="badge {% if profile.role == 'COACH' %}badge-coach{% else %}badge-athlete{% endif %}">
+                        {{ profile.get_role_display }}
+                    </span>
+                </span>
+            {% endif %}
+            <span><strong>Joined:</strong> {{ target_user.date_joined|date:"M d, Y" }}</span>
+        </div>
+        <div style="margin-top: 1rem;">
+            {% if profile and profile.role == 'ATHLETE' %}
+            <a href="{% url 'core:athlete_detail' target_user.id %}" class="btn btn-light">
+                <i class="bi bi-graph-up"></i> View Athlete Details
+            </a>
+            {% endif %}
+            <a href="{% url 'core:management_dashboard' %}" class="btn btn-light">
+                <i class="bi bi-arrow-left"></i> Back to Dashboard
+            </a>
+            {% if target_user != user %}
+            <a href="{% url 'core:management_user_delete' target_user.id %}" class="btn btn-danger">
+                <i class="bi bi-trash"></i> Delete User
+            </a>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Profile Information -->
+    {% if profile %}
+    <div class="section-card">
+        <h2><i class="bi bi-info-circle"></i> Profile Information</h2>
+        <div class="info-grid">
+            <div class="info-item">
+                <div class="info-label">Role</div>
+                <div class="info-value">
+                    <span class="badge {% if profile.role == 'COACH' %}badge-coach{% else %}badge-athlete{% endif %}">
+                        {{ profile.get_role_display }}
+                    </span>
+                </div>
+            </div>
+            {% if profile.role == 'ATHLETE' %}
+            <div class="info-item">
+                <div class="info-label">Current Status</div>
+                <div class="info-value">{{ profile.get_current_status_display }}</div>
+            </div>
+            {% if profile.status_note %}
+            <div class="info-item">
+                <div class="info-label">Status Note</div>
+                <div class="info-value">{{ profile.status_note }}</div>
+            </div>
+            {% endif %}
+            {% endif %}
+            <div class="info-item">
+                <div class="info-label">Timezone</div>
+                <div class="info-value">{{ profile.timezone }}</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">Daily Reminders</div>
+                <div class="info-value">
+                    {% if profile.daily_reminder_enabled %}Enabled{% else %}Disabled{% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Teams -->
+    {% if user_teams %}
+    <div class="section-card">
+        <h2><i class="bi bi-people"></i> Teams ({{ user_teams|length }})</h2>
+        <div style="display: flex; flex-wrap: wrap; gap: 1rem;">
+            {% for team in user_teams %}
+            <a href="{% url 'core:management_team_detail' team.id %}" class="btn btn-outline-primary">
+                <i class="bi bi-people"></i> {{ team.name }}
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+    {% endif %}
+    
+    <!-- Readiness Reports -->
+    <div class="section-card">
+        <h2><i class="bi bi-clipboard-data"></i> Readiness Reports ({{ reports.count }})</h2>
+        {% if reports %}
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Readiness Score</th>
+                            <th>Sleep</th>
+                            <th>Energy</th>
+                            <th>Muscle Freshness</th>
+                            <th>Mood</th>
+                            <th>Motivation</th>
+                            <th>Nutrition</th>
+                            <th>Hydration</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for report in reports %}
+                        <tr>
+                            <td>{{ report.date_created|date:"M d, Y" }}</td>
+                            <td><strong>{{ report.readiness_score }}</strong></td>
+                            <td>{{ report.sleep_quality }}</td>
+                            <td>{{ report.energy_fatigue }}</td>
+                            <td>{{ report.muscle_soreness }}</td>
+                            <td>{{ report.mood_stress }}</td>
+                            <td>{{ report.motivation }}</td>
+                            <td>{{ report.nutrition_quality }}</td>
+                            <td>{{ report.hydration }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p style="color: #6c757d; text-align: center; padding: 2rem;">No reports found.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+

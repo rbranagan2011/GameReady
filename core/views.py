@@ -10,12 +10,21 @@ from django.http import JsonResponse
 from datetime import timedelta, datetime
 from django import forms
 from django.db import models
-from .models import ReadinessReport, Profile, TeamTag, TeamSchedule, ReadinessStatus, Team, EmailVerification, PlayerPersonalLabel
-from .forms import ReadinessReportForm, TeamScheduleForm, TeamTagForm, TeamNameForm, TeamLogoForm, UserSignupForm, TeamCreationForm, JoinTeamForm, FeatureRequestForm, UpdateProfileForm, ChangePasswordForm, JoinTeamByCodeForm, ReminderSettingsForm
+from .models import ReadinessReport, Profile, TeamTag, TeamSchedule, ReadinessStatus, Team, EmailVerification, PlayerPersonalLabel, FeatureRequest, FeatureRequestComment
+from .forms import ReadinessReportForm, TeamScheduleForm, TeamTagForm, TeamNameForm, TeamLogoForm, UserSignupForm, TeamCreationForm, JoinTeamForm, FeatureRequestForm, FeatureRequestCommentForm, UpdateProfileForm, ChangePasswordForm, JoinTeamByCodeForm, ReminderSettingsForm
 from django.template.loader import render_to_string
 from django.urls import reverse
 from django.core.mail import send_mail
 from django.conf import settings
+from .posthog_tracking import track_event, identify_user
+
+
+def has_management_access(user):
+    """
+    Check if user has management-level access.
+    Uses Django's built-in superuser flag.
+    """
+    return user.is_authenticated and user.is_superuser
 
 
 def get_coach_active_team(request):
@@ -120,6 +129,12 @@ def submit_readiness_report(request):
             # Now save the report to the database (this will also trigger
             # the 'calculate_readiness_score' method in your model)
             report.save()
+            
+            # Track report submission in PostHog
+            track_event(request.user, 'report_submitted', {
+                'readiness_score': report.readiness_score,
+                'date': str(report.date_created),
+            })
 
             # Redirect to Player Dashboard after submission (no confirmation message)
             return redirect('core:player_dashboard')
@@ -182,7 +197,14 @@ class CustomLoginView(BaseLoginView):
                 return redirect('login')
         
         # Proceed with normal login
-        return super().form_valid(form)
+        response = super().form_valid(form)
+        
+        # Track login in PostHog
+        if self.request.user.is_authenticated:
+            identify_user(self.request.user)
+            track_event(self.request.user, 'user_logged_in')
+        
+        return response
 
 
 def home(request):
@@ -191,6 +213,10 @@ def home(request):
     For unauthenticated users, redirect to login page.
     """
     if request.user.is_authenticated:
+        # Check for management access first
+        if has_management_access(request.user):
+            return redirect('core:management_dashboard')
+        
         try:
             if request.user.profile.role == Profile.Role.ATHLETE:
                 return redirect('core:player_dashboard')
@@ -243,18 +269,38 @@ def coach_dashboard(request):
     """
     Simplified coach dashboard exactly as specified.
     """
-    # Check if user is a coach
-    try:
-        if request.user.profile.role != Profile.Role.COACH:
-            messages.warning(request, "Access denied. Coach access required.")
-            return redirect('core:home')
-    except Profile.DoesNotExist:
-        messages.error(request, "Your profile is not set up. Please contact your administrator.")
-        return redirect('logout')
+    # Allow management access or coach access
+    is_management = has_management_access(request.user)
+    
+    if not is_management:
+        # Check if user is a coach
+        try:
+            if request.user.profile.role != Profile.Role.COACH:
+                messages.warning(request, "Access denied. Coach access required.")
+                return redirect('core:home')
+        except Profile.DoesNotExist:
+            messages.error(request, "Your profile is not set up. Please contact your administrator.")
+            return redirect('logout')
     
     # Get coach's active team (from session or primary team)
-    coach_team = get_coach_active_team(request)
+    # For management users, allow selecting a team via query parameter
+    if is_management:
+        team_id = request.GET.get('team_id')
+        if team_id:
+            try:
+                coach_team = Team.objects.get(id=team_id)
+            except Team.DoesNotExist:
+                coach_team = None
+        else:
+            # Default to first team if available
+            coach_team = Team.objects.first()
+    else:
+        coach_team = get_coach_active_team(request)
+    
     if not coach_team:
+        if is_management:
+            # Management user with no teams - redirect to management dashboard
+            return redirect('core:management_dashboard')
         messages.warning(request, "You are not assigned to a team.")
         return render(request, 'core/coach_dashboard.html', {'team': None})
     
@@ -604,27 +650,35 @@ def athlete_detail(request, athlete_id):
     """
     Detailed view of an individual athlete's readiness history.
     """
-    # Check if user is a coach
-    try:
-        if request.user.profile.role != Profile.Role.COACH:
-            messages.warning(request, "Access denied. Coach access required.")
-            return redirect('core:home')
-    except Profile.DoesNotExist:
-        messages.error(request, "Your profile is not set up. Please contact your administrator.")
-        return redirect('logout')
+    # Allow management access or coach access
+    is_management = has_management_access(request.user)
     
-    # Get the athlete
-    athlete = get_object_or_404(User, id=athlete_id, profile__role=Profile.Role.ATHLETE)
+    if not is_management:
+        # Check if user is a coach
+        try:
+            if request.user.profile.role != Profile.Role.COACH:
+                messages.warning(request, "Access denied. Coach access required.")
+                return redirect('core:home')
+        except Profile.DoesNotExist:
+            messages.error(request, "Your profile is not set up. Please contact your administrator.")
+            return redirect('logout')
     
-    # Check if athlete is on any of the coach's teams
-    coach_team = get_coach_active_team(request)
-    if not coach_team:
-        messages.warning(request, "You are not assigned to a team.")
-        return redirect('core:coach_dashboard')
-    athlete_teams = athlete.profile.get_teams()
-    if coach_team not in athlete_teams:
-        messages.warning(request, "Access denied. You can only view athletes from your team.")
-        return redirect('core:coach_dashboard')
+    # Get the athlete (management can view any user)
+    if is_management:
+        athlete = get_object_or_404(User, id=athlete_id)
+    else:
+        athlete = get_object_or_404(User, id=athlete_id, profile__role=Profile.Role.ATHLETE)
+    
+    # Check if athlete is on any of the coach's teams (skip for management)
+    if not is_management:
+        coach_team = get_coach_active_team(request)
+        if not coach_team:
+            messages.warning(request, "You are not assigned to a team.")
+            return redirect('core:coach_dashboard')
+        athlete_teams = athlete.profile.get_teams()
+        if coach_team not in athlete_teams:
+            messages.warning(request, "Access denied. You can only view athletes from your team.")
+            return redirect('core:coach_dashboard')
     
     # Get athlete's reports (last 30 days)
     thirty_days_ago = timezone.now().date() - timedelta(days=29)
@@ -662,18 +716,35 @@ def team_schedule_settings(request):
     """
     View for coaches to set their team's weekly schedule using a calendar interface.
     """
-    # Check if user is a coach
-    try:
-        if request.user.profile.role != Profile.Role.COACH:
-            messages.warning(request, "Access denied. Coach access required.")
-            return redirect('core:home')
-    except Profile.DoesNotExist:
-        messages.error(request, "Your profile is not set up. Please contact your administrator.")
-        return redirect('logout')
+    # Allow management access or coach access
+    is_management = has_management_access(request.user)
     
-    # Get coach's active team
-    coach_team = get_coach_active_team(request)
+    if not is_management:
+        # Check if user is a coach
+        try:
+            if request.user.profile.role != Profile.Role.COACH:
+                messages.warning(request, "Access denied. Coach access required.")
+                return redirect('core:home')
+        except Profile.DoesNotExist:
+            messages.error(request, "Your profile is not set up. Please contact your administrator.")
+            return redirect('logout')
+    
+    # Get coach's active team (or selected team for management)
+    if is_management:
+        team_id = request.GET.get('team_id')
+        if team_id:
+            try:
+                coach_team = Team.objects.get(id=team_id)
+            except Team.DoesNotExist:
+                coach_team = None
+        else:
+            coach_team = Team.objects.first()
+    else:
+        coach_team = get_coach_active_team(request)
+    
     if not coach_team:
+        if is_management:
+            return redirect('core:management_dashboard')
         messages.warning(request, "You are not assigned to a team.")
         return redirect('core:coach_dashboard')
     
@@ -1017,15 +1088,30 @@ def player_dashboard(request):
     Minimal, mobile-first Player Overview: today circle, 7-day sparkline, streak, and two insight chips.
     Auto-redirects to survey if after 5:30am and no report submitted today.
     """
-    # Only athletes
-    profile = request.user.profile
+    # Allow management access or athlete access
+    is_management = has_management_access(request.user)
+    
+    if not is_management:
+        # Only athletes
+        profile = request.user.profile
+        try:
+            if profile.role != Profile.Role.ATHLETE:
+                messages.warning(request, "Access denied. Athlete only.")
+                return redirect('core:home')
+        except Profile.DoesNotExist:
+            messages.error(request, "Your profile is not set up. Please contact your administrator.")
+            return redirect('logout')
+    
+    # Get profile (handle case where management user might not have profile)
     try:
-        if profile.role != Profile.Role.ATHLETE:
-            messages.warning(request, "Access denied. Athlete only.")
-            return redirect('core:home')
+        profile = request.user.profile
     except Profile.DoesNotExist:
-        messages.error(request, "Your profile is not set up. Please contact your administrator.")
-        return redirect('logout')
+        # For management users without profile, create one
+        if is_management:
+            profile = Profile.objects.create(user=request.user, role=Profile.Role.COACH)
+        else:
+            messages.error(request, "Your profile is not set up. Please contact your administrator.")
+            return redirect('logout')
 
     today = timezone.now().date()
     
@@ -2577,6 +2663,12 @@ def signup(request):
             # Create user and profile (user will be inactive until email verified)
             user = form.save(role=selected_role)
             
+            # Track signup in PostHog (user is not active yet, but we can track the signup)
+            track_event(user, 'user_signed_up', {
+                'role': selected_role,
+                'has_join_code': bool(join_code),
+            })
+            
             # Store join_code in session for after verification
             if join_code:
                 request.session['join_code'] = join_code.upper().strip()
@@ -2635,6 +2727,12 @@ def verify_email(request, token):
     
     # Auto-login the user
     login(request, user)
+    
+    # Identify user in PostHog and track email verification
+    identify_user(user)
+    track_event(user, 'email_verified', {
+        'role': user.profile.role,
+    })
     
     # Get role from session or profile
     selected_role = request.session.get('pending_role') or user.profile.role
@@ -2700,6 +2798,14 @@ def team_setup_coach(request):
                 request.session['active_team_id'] = team.id
                 # Clear join_code from session
                 request.session.pop('join_code', None)
+                
+                # Track team creation in PostHog
+                track_event(request.user, 'team_created', {
+                    'team_name': team.name,
+                    'team_id': team.id,
+                    'is_first_team': not has_existing_team,
+                })
+                
                 # Redirect to get started tutorial only if this is first team
                 if not has_existing_team:
                     request.session['tutorial_step'] = 1
@@ -2737,6 +2843,14 @@ def team_setup_coach(request):
                 request.session['active_team_id'] = team.id
                 # Clear join_code from session
                 request.session.pop('join_code', None)
+                
+                # Track team join in PostHog
+                track_event(request.user, 'team_joined', {
+                    'team_name': team.name,
+                    'team_id': team.id,
+                    'is_first_team': not has_existing_team,
+                })
+                
                 messages.success(request, f'Joined team "{team.name}"!')
                 return redirect('core:coach_dashboard')
     
@@ -3114,17 +3228,35 @@ def team_admin(request):
     - Add/remove athletes and coaches
     - Delete team (with confirmation)
     """
-    # Permissions
-    try:
-        if request.user.profile.role != Profile.Role.COACH:
-            messages.error(request, 'Access denied. Coach access required.')
-            return redirect('core:home')
-    except Profile.DoesNotExist:
-        messages.error(request, 'Your profile is not set up.')
-        return redirect('logout')
+    # Allow management access or coach access
+    is_management = has_management_access(request.user)
+    
+    if not is_management:
+        # Permissions
+        try:
+            if request.user.profile.role != Profile.Role.COACH:
+                messages.error(request, 'Access denied. Coach access required.')
+                return redirect('core:home')
+        except Profile.DoesNotExist:
+            messages.error(request, 'Your profile is not set up.')
+            return redirect('logout')
 
-    team = get_coach_active_team(request)
+    # Get team (management can select via query param)
+    if is_management:
+        team_id = request.GET.get('team_id')
+        if team_id:
+            try:
+                team = Team.objects.get(id=team_id)
+            except Team.DoesNotExist:
+                team = None
+        else:
+            team = Team.objects.first()
+    else:
+        team = get_coach_active_team(request)
+    
     if not team:
+        if is_management:
+            return redirect('core:management_dashboard')
         messages.error(request, 'You are not assigned to a team.')
         return redirect('core:coach_dashboard')
 
@@ -3313,67 +3445,405 @@ def team_admin(request):
 
 
 @login_required
-def feature_request(request):
+def feature_request_list(request):
     """
-    View for users to submit feature requests and feedback.
-    Sends email to rian@getreadyapp.com
+    Timeline view showing all feature requests and bug reports.
+    Users can filter by type and sort by upvotes or date.
     """
-    # Check if this is a request to show the form again (after submission)
-    show_form_again = request.GET.get('new', '') == '1'
-    submitted = False
+    # Get filter parameters
+    request_type = request.GET.get('type', '')  # 'FEATURE' or 'BUG' or ''
+    sort_by = request.GET.get('sort', 'recent')  # 'recent', 'popular', 'oldest'
     
+    # Get all feature requests
+    feature_requests = FeatureRequest.objects.all().select_related('user').prefetch_related('upvoted_by', 'comments')
+    
+    # Filter by type if specified
+    if request_type in ['FEATURE', 'BUG']:
+        feature_requests = feature_requests.filter(request_type=request_type)
+    
+    # Sort
+    if sort_by == 'popular':
+        # Sort by upvote count (descending), then by date
+        # Convert to list to sort by computed values
+        feature_requests = list(feature_requests)
+        feature_requests = sorted(feature_requests, key=lambda x: (x.upvote_count(), x.created_at), reverse=True)
+    elif sort_by == 'oldest':
+        feature_requests = feature_requests.order_by('created_at')
+    else:  # recent (default)
+        feature_requests = feature_requests.order_by('-created_at')
+    
+    # Add upvote count and user upvote status to each request
+    for fr in feature_requests:
+        fr.upvotes = fr.upvote_count()
+        fr.user_has_upvoted = fr.has_user_upvoted(request.user)
+        fr.comment_count = fr.comments.count()
+    
+    context = {
+        'feature_requests': feature_requests,
+        'current_type': request_type,
+        'current_sort': sort_by,
+    }
+    return render(request, 'core/feature_request_list.html', context)
+
+
+@login_required
+def feature_request_detail(request, request_id):
+    """
+    Detail view for a single feature request with comments.
+    """
+    try:
+        feature_request = FeatureRequest.objects.select_related('user').prefetch_related('upvoted_by', 'comments__user').get(id=request_id)
+    except FeatureRequest.DoesNotExist:
+        messages.error(request, 'Feature request not found.')
+        return redirect('core:feature_request_list')
+    
+    # Check if user has upvoted
+    user_has_upvoted = feature_request.has_user_upvoted(request.user)
+    upvote_count = feature_request.upvote_count()
+    comment_count = feature_request.comments.count()
+    
+    # Comment form
+    comment_form = FeatureRequestCommentForm()
+    
+    # Handle POST requests
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        
+        if action == 'upvote':
+            # Toggle upvote
+            if user_has_upvoted:
+                feature_request.upvoted_by.remove(request.user)
+                messages.info(request, 'Upvote removed.')
+            else:
+                feature_request.upvoted_by.add(request.user)
+                messages.success(request, 'Upvoted!')
+            return redirect('core:feature_request_detail', request_id=request_id)
+        
+        elif action == 'comment':
+            comment_form = FeatureRequestCommentForm(request.POST)
+            if comment_form.is_valid():
+                comment = comment_form.cleaned_data['comment']
+                FeatureRequestComment.objects.create(
+                    feature_request=feature_request,
+                    user=request.user,
+                    comment=comment
+                )
+                messages.success(request, 'Comment added!')
+                return redirect('core:feature_request_detail', request_id=request_id)
+    
+    # Refresh upvote status after potential changes
+    user_has_upvoted = feature_request.has_user_upvoted(request.user)
+    upvote_count = feature_request.upvote_count()
+    
+    context = {
+        'feature_request': feature_request,
+        'user_has_upvoted': user_has_upvoted,
+        'upvote_count': upvote_count,
+        'comment_count': comment_count,
+        'comment_form': comment_form,
+        'comments': feature_request.comments.all().select_related('user'),
+    }
+    return render(request, 'core/feature_request_detail.html', context)
+
+
+@login_required
+def feature_request_create(request):
+    """
+    Create a new feature request or bug report.
+    """
     form = FeatureRequestForm()
     
     if request.method == 'POST':
         form = FeatureRequestForm(request.POST)
         if form.is_valid():
-            message = form.cleaned_data['message']
-            user = request.user
-            
-            # Prepare email content
-            subject = f'Feature Request from {user.get_full_name() or user.email}'
-            
-            # Build email body with user info
-            email_body = f"""
-Feature Request Submission
-
-From: {user.get_full_name() or user.email} ({user.email})
-Role: {user.profile.get_role_display()}
-Team: {user.profile.team.name if user.profile.team else 'None'}
-Date: {timezone.now().strftime('%Y-%m-%d %H:%M:%S UTC')}
-
-Message:
-{'-' * 50}
-{message}
-{'-' * 50}
-
----
-This feature request was submitted through the GameReady app.
-"""
-            
-            # Send email
-            try:
-                send_mail(
-                    subject=subject,
-                    message=email_body,
-                    from_email=settings.DEFAULT_FROM_EMAIL,
-                    recipient_list=['rian@getreadyapp.com'],
-                    fail_silently=False,
-                )
-                submitted = True
-                # Reset form for potential new submission
-                form = FeatureRequestForm()
-            except Exception as e:
-                messages.error(request, 'There was an error submitting your request. Please try again later.')
-                # Log error in production
-                print(f"Error sending feature request email: {e}")
+            feature_request = FeatureRequest.objects.create(
+                user=request.user,
+                title=form.cleaned_data['title'],
+                description=form.cleaned_data['description'],
+                request_type=form.cleaned_data['request_type'],
+            )
+            messages.success(request, f'Your {form.cleaned_data["request_type"].lower().replace("_", " ")} has been submitted!')
+            return redirect('core:feature_request_detail', request_id=feature_request.id)
     
     context = {
         'form': form,
-        'submitted': submitted,
-        'show_form': show_form_again or not submitted,
     }
-    return render(request, 'core/feature_request.html', context)
+    return render(request, 'core/feature_request_create.html', context)
+
+
+@login_required
+def feature_request_upvote(request, request_id):
+    """
+    AJAX endpoint to toggle upvote on a feature request.
+    """
+    try:
+        feature_request = FeatureRequest.objects.get(id=request_id)
+    except FeatureRequest.DoesNotExist:
+        return JsonResponse({'success': False, 'message': 'Feature request not found.'})
+    
+    user_has_upvoted = feature_request.has_user_upvoted(request.user)
+    
+    if user_has_upvoted:
+        feature_request.upvoted_by.remove(request.user)
+        action = 'removed'
+    else:
+        feature_request.upvoted_by.add(request.user)
+        action = 'added'
+    
+    return JsonResponse({
+        'success': True,
+        'action': action,
+        'upvote_count': feature_request.upvote_count(),
+        'user_has_upvoted': not user_has_upvoted,
+    })
+
+
+@login_required
+def feature_request_delete(request, request_id):
+    """
+    Delete a feature request. Only the owner can delete their own request.
+    """
+    try:
+        feature_request = FeatureRequest.objects.get(id=request_id)
+    except FeatureRequest.DoesNotExist:
+        messages.error(request, 'Feature request not found.')
+        return redirect('core:feature_request_list')
+    
+    # Check if user is the owner
+    if feature_request.user != request.user:
+        messages.error(request, 'You do not have permission to delete this feature request.')
+        return redirect('core:feature_request_detail', request_id=request_id)
+    
+    # Handle POST request (confirmation)
+    if request.method == 'POST':
+        title = feature_request.title
+        feature_request.delete()
+        messages.success(request, f'Feature request "{title}" has been deleted.')
+        return redirect('core:feature_request_list')
+    
+    # GET request - show confirmation page
+    context = {
+        'feature_request': feature_request,
+    }
+    return render(request, 'core/feature_request_delete.html', context)
+
+
+@login_required
+def management_dashboard(request):
+    """
+    Comprehensive management dashboard with full system access.
+    Shows overview of all teams, users, and system statistics.
+    """
+    if not has_management_access(request.user):
+        messages.error(request, 'Access denied.')
+        return redirect('core:home')
+    
+    # Get all teams with statistics
+    # Note: Using distinct() on Count() requires careful handling
+    teams = Team.objects.all().order_by('name')
+    
+    # Annotate with counts manually to avoid distinct() issues
+    for team in teams:
+        all_members = Profile.objects.filter(
+            Q(team=team) | Q(teams=team)
+        ).distinct()
+        team.member_count = all_members.count()
+        team.coach_count = all_members.filter(role=Profile.Role.COACH).count()
+        team.athlete_count = all_members.filter(role=Profile.Role.ATHLETE).count()
+    
+    # Get all users with their roles
+    users = User.objects.select_related('profile').all().order_by('-date_joined')
+    
+    # Get total statistics
+    total_teams = Team.objects.count()
+    total_users = User.objects.count()
+    total_coaches = Profile.objects.filter(role=Profile.Role.COACH).count()
+    total_athletes = Profile.objects.filter(role=Profile.Role.ATHLETE).count()
+    total_reports = ReadinessReport.objects.count()
+    
+    # Recent activity
+    recent_reports = ReadinessReport.objects.select_related('athlete', 'athlete__profile').order_by('-date_created')[:10]
+    recent_users = User.objects.select_related('profile').order_by('-date_joined')[:10]
+    
+    context = {
+        'teams': teams,
+        'users': users,
+        'total_teams': total_teams,
+        'total_users': total_users,
+        'total_coaches': total_coaches,
+        'total_athletes': total_athletes,
+        'total_reports': total_reports,
+        'recent_reports': recent_reports,
+        'recent_users': recent_users,
+    }
+    return render(request, 'core/management_dashboard.html', context)
+
+
+@login_required
+def management_team_detail(request, team_id):
+    """
+    Management view of a specific team with full control.
+    """
+    if not has_management_access(request.user):
+        messages.error(request, 'Access denied.')
+        return redirect('core:home')
+    
+    team = get_object_or_404(Team, id=team_id)
+    
+    # Get all members (both primary and ManyToMany)
+    primary_members = Profile.objects.filter(team=team).select_related('user')
+    many_to_many_members = Profile.objects.filter(teams=team).select_related('user')
+    
+    # Combine and deduplicate
+    all_member_ids = set()
+    all_members = []
+    for member in list(primary_members) + list(many_to_many_members):
+        if member.user.id not in all_member_ids:
+            all_member_ids.add(member.user.id)
+            all_members.append(member)
+    
+    # Separate coaches and athletes
+    coaches = [m for m in all_members if m.role == Profile.Role.COACH]
+    athletes = [m for m in all_members if m.role == Profile.Role.ATHLETE]
+    
+    # Get team statistics
+    today = timezone.now().date()
+    today_reports = ReadinessReport.objects.filter(
+        athlete__profile__teams=team,
+        date_created=today
+    ) | ReadinessReport.objects.filter(
+        athlete__profile__team=team,
+        date_created=today
+    )
+    
+    context = {
+        'team': team,
+        'coaches': coaches,
+        'athletes': athletes,
+        'today_reports': today_reports,
+        'total_members': len(all_members),
+    }
+    return render(request, 'core/management_team_detail.html', context)
+
+
+@login_required
+def management_user_detail(request, user_id):
+    """
+    Management view of a specific user with full access to their data.
+    """
+    if not has_management_access(request.user):
+        messages.error(request, 'Access denied.')
+        return redirect('core:home')
+    
+    target_user = get_object_or_404(User, id=user_id)
+    
+    # Prevent deleting yourself
+    if target_user == request.user:
+        messages.error(request, 'You cannot delete your own account.')
+        return redirect('core:management_user_detail', user_id=user_id)
+    
+    try:
+        profile = target_user.profile
+    except Profile.DoesNotExist:
+        profile = None
+    
+    # Get all readiness reports
+    reports = ReadinessReport.objects.filter(athlete=target_user).order_by('-date_created')
+    
+    # Get all teams the user belongs to
+    user_teams = []
+    if profile:
+        user_teams = profile.get_teams()
+    
+    # Handle POST request for deletion
+    if request.method == 'POST' and request.POST.get('action') == 'delete':
+        username = target_user.username
+        target_user.delete()  # This will cascade delete profile and related data
+        messages.success(request, f'User "{username}" has been deleted.')
+        return redirect('core:management_dashboard')
+    
+    context = {
+        'target_user': target_user,
+        'profile': profile,
+        'reports': reports,
+        'user_teams': user_teams,
+    }
+    return render(request, 'core/management_user_detail.html', context)
+
+
+@login_required
+def management_team_delete(request, team_id):
+    """
+    Delete a team. Only accessible by management users.
+    """
+    if not has_management_access(request.user):
+        messages.error(request, 'Access denied.')
+        return redirect('core:home')
+    
+    team = get_object_or_404(Team, id=team_id)
+    
+    # Handle POST request (confirmation)
+    if request.method == 'POST':
+        team_name = team.name
+        team.delete()  # This will cascade delete related data
+        messages.success(request, f'Team "{team_name}" has been deleted.')
+        return redirect('core:management_dashboard')
+    
+    # GET request - show confirmation page
+    # Get member count for warning
+    all_members = Profile.objects.filter(
+        Q(team=team) | Q(teams=team)
+    ).distinct().count()
+    
+    context = {
+        'team': team,
+        'member_count': all_members,
+    }
+    return render(request, 'core/management_team_delete.html', context)
+
+
+@login_required
+def management_user_delete(request, user_id):
+    """
+    Delete a user. Only accessible by management users.
+    """
+    if not has_management_access(request.user):
+        messages.error(request, 'Access denied.')
+        return redirect('core:home')
+    
+    target_user = get_object_or_404(User, id=user_id)
+    
+    # Prevent deleting yourself
+    if target_user == request.user:
+        messages.error(request, 'You cannot delete your own account.')
+        return redirect('core:management_user_detail', user_id=user_id)
+    
+    # Handle POST request (confirmation)
+    if request.method == 'POST':
+        username = target_user.username
+        target_user.delete()  # This will cascade delete profile and related data
+        messages.success(request, f'User "{username}" has been deleted.')
+        return redirect('core:management_dashboard')
+    
+    # GET request - show confirmation page
+    try:
+        profile = target_user.profile
+    except Profile.DoesNotExist:
+        profile = None
+    
+    # Get related data counts for warning
+    reports_count = ReadinessReport.objects.filter(athlete=target_user).count()
+    user_teams = []
+    if profile:
+        user_teams = profile.get_teams()
+    
+    context = {
+        'target_user': target_user,
+        'profile': profile,
+        'reports_count': reports_count,
+        'user_teams': user_teams,
+    }
+    return render(request, 'core/management_user_delete.html', context)
 
 
 @login_required

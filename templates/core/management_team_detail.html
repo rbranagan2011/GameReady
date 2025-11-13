@@ -1,0 +1,221 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ team.name }} - Management View{% endblock %}
+
+{% block extra_css %}
+<style>
+    .management-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 2rem 1rem;
+    }
+    
+    .section-card {
+        background: white;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .section-card h2 {
+        margin: 0 0 1.5rem 0;
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: #333;
+        border-bottom: 2px solid #667eea;
+        padding-bottom: 0.5rem;
+    }
+    
+    .team-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 2rem;
+        border-radius: 8px;
+        margin-bottom: 2rem;
+    }
+    
+    .team-header h1 {
+        margin: 0;
+        font-size: 2rem;
+        font-weight: 600;
+    }
+    
+    .team-meta {
+        margin-top: 1rem;
+        display: flex;
+        gap: 2rem;
+        font-size: 0.9rem;
+        opacity: 0.9;
+    }
+    
+    .member-card {
+        border: 1px solid #e0e0e0;
+        border-radius: 6px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .member-info {
+        flex: 1;
+    }
+    
+    .member-name {
+        font-weight: 600;
+        font-size: 1.1rem;
+        color: #333;
+        text-decoration: none;
+    }
+    
+    .member-name:hover {
+        color: #667eea;
+    }
+    
+    .member-meta {
+        font-size: 0.9rem;
+        color: #6c757d;
+        margin-top: 0.25rem;
+    }
+    
+    .badge {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+    
+    .badge-coach {
+        background: #e3f2fd;
+        color: #1976d2;
+    }
+    
+    .badge-athlete {
+        background: #e8f5e9;
+        color: #2e7d32;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="management-container">
+    <div class="team-header">
+        <h1><i class="bi bi-people"></i> {{ team.name }}</h1>
+        <div class="team-meta">
+            <span><strong>Join Code:</strong> <code>{{ team.join_code }}</code></span>
+            <span><strong>Total Members:</strong> {{ total_members }}</span>
+            <span><strong>Coaches:</strong> {{ coaches|length }}</span>
+            <span><strong>Athletes:</strong> {{ athletes|length }}</span>
+        </div>
+        <div style="margin-top: 1rem;">
+            <a href="{% url 'core:coach_dashboard' %}?team_id={{ team.id }}" class="btn btn-light">
+                <i class="bi bi-speedometer2"></i> View Coach Dashboard
+            </a>
+            <a href="{% url 'core:management_dashboard' %}" class="btn btn-light">
+                <i class="bi bi-arrow-left"></i> Back to Dashboard
+            </a>
+            <a href="{% url 'core:management_team_delete' team.id %}" class="btn btn-danger">
+                <i class="bi bi-trash"></i> Delete Team
+            </a>
+        </div>
+    </div>
+    
+    <!-- Coaches -->
+    {% if coaches %}
+    <div class="section-card">
+        <h2><i class="bi bi-person-badge"></i> Coaches ({{ coaches|length }})</h2>
+        {% for coach in coaches %}
+        <div class="member-card">
+            <div class="member-info">
+                <a href="{% url 'core:management_user_detail' coach.user.id %}" class="member-name">
+                    {{ coach.user.get_full_name|default:coach.user.username }}
+                </a>
+                <div class="member-meta">
+                    <span class="badge badge-coach">Coach</span>
+                    <span style="margin-left: 1rem;">{{ coach.user.email }}</span>
+                </div>
+            </div>
+            <a href="{% url 'core:management_user_detail' coach.user.id %}" class="btn btn-sm btn-primary">
+                <i class="bi bi-eye"></i> View Profile
+            </a>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    
+    <!-- Athletes -->
+    {% if athletes %}
+    <div class="section-card">
+        <h2><i class="bi bi-person"></i> Athletes ({{ athletes|length }})</h2>
+        {% for athlete in athletes %}
+        <div class="member-card">
+            <div class="member-info">
+                <a href="{% url 'core:management_user_detail' athlete.user.id %}" class="member-name">
+                    {{ athlete.user.get_full_name|default:athlete.user.username }}
+                </a>
+                <div class="member-meta">
+                    <span class="badge badge-athlete">Athlete</span>
+                    <span style="margin-left: 1rem;">{{ athlete.user.email }}</span>
+                    {% if athlete.current_status != 'AVAILABLE' %}
+                        <span style="margin-left: 1rem; color: #dc3545;">
+                            Status: {{ athlete.get_current_status_display }}
+                        </span>
+                    {% endif %}
+                </div>
+            </div>
+            <div>
+                <a href="{% url 'core:athlete_detail' athlete.user.id %}" class="btn btn-sm btn-outline-primary">
+                    <i class="bi bi-graph-up"></i> View Details
+                </a>
+                <a href="{% url 'core:management_user_detail' athlete.user.id %}" class="btn btn-sm btn-primary">
+                    <i class="bi bi-eye"></i> Full Profile
+                </a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    
+    <!-- Today's Reports -->
+    {% if today_reports %}
+    <div class="section-card">
+        <h2><i class="bi bi-clipboard-check"></i> Today's Reports ({{ today_reports.count }})</h2>
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Athlete</th>
+                        <th>Readiness Score</th>
+                        <th>Sleep</th>
+                        <th>Energy</th>
+                        <th>Muscle Freshness</th>
+                        <th>Mood</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for report in today_reports %}
+                    <tr>
+                        <td>
+                            <a href="{% url 'core:management_user_detail' report.athlete.id %}">
+                                {{ report.athlete.get_full_name|default:report.athlete.username }}
+                            </a>
+                        </td>
+                        <td><strong>{{ report.readiness_score }}</strong></td>
+                        <td>{{ report.sleep_quality }}</td>
+                        <td>{{ report.energy_fatigue }}</td>
+                        <td>{{ report.muscle_soreness }}</td>
+                        <td>{{ report.mood_stress }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+

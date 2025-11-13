@@ -43,7 +43,17 @@ urlpatterns = [
     # Team Administration
     path('team-admin/', views.team_admin, name='team_admin'),
     # Feature Request
-    path('feature-request/', views.feature_request, name='feature_request'),
+    path('feature-request/', views.feature_request_list, name='feature_request_list'),
+    path('feature-request/create/', views.feature_request_create, name='feature_request_create'),
+    path('feature-request/<int:request_id>/', views.feature_request_detail, name='feature_request_detail'),
+    path('feature-request/<int:request_id>/upvote/', views.feature_request_upvote, name='feature_request_upvote'),
+    path('feature-request/<int:request_id>/delete/', views.feature_request_delete, name='feature_request_delete'),
     # Account Management
     path('account/', views.account_management, name='account_management'),
+    # Management Dashboard
+    path('management/', views.management_dashboard, name='management_dashboard'),
+    path('management/team/<int:team_id>/', views.management_team_detail, name='management_team_detail'),
+    path('management/team/<int:team_id>/delete/', views.management_team_delete, name='management_team_delete'),
+    path('management/user/<int:user_id>/', views.management_user_detail, name='management_user_detail'),
+    path('management/user/<int:user_id>/delete/', views.management_user_delete, name='management_user_delete'),
 ]

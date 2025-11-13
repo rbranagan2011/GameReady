@@ -1,0 +1,244 @@
+{% extends 'base.html' %}
+{% load core_extras %}
+
+{% block title %}{{ feature_request.title }} - Feature Request{% endblock %}
+
+{% block extra_css %}
+<style>
+    .feature-request-detail-container {
+        max-width: 900px;
+        margin: 0 auto;
+    }
+    
+    .detail-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 2rem;
+        border-radius: 12px 12px 0 0;
+    }
+    
+    .detail-header h2 {
+        margin: 0 0 0.5rem 0;
+        font-size: 1.75rem;
+        font-weight: 600;
+    }
+    
+    .detail-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        align-items: center;
+        font-size: 0.9rem;
+        opacity: 0.9;
+        margin-top: 1rem;
+    }
+    
+    .request-type-badge {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        background: rgba(255, 255, 255, 0.2);
+    }
+    
+    .status-badge {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        background: rgba(255, 255, 255, 0.2);
+    }
+    
+    .detail-body {
+        padding: 2rem;
+        background: white;
+    }
+    
+    .detail-description {
+        color: #495057;
+        line-height: 1.8;
+        font-size: 1rem;
+        margin-bottom: 2rem;
+        white-space: pre-wrap;
+    }
+    
+    .action-bar {
+        display: flex;
+        gap: 1rem;
+        align-items: center;
+        padding: 1rem;
+        background: #f8f9fa;
+        border-radius: 8px;
+        margin-bottom: 2rem;
+    }
+    
+    .upvote-btn {
+        background: {% if user_has_upvoted %}#667eea{% else %}white{% endif %};
+        border: 2px solid #667eea;
+        border-radius: 8px;
+        padding: 0.75rem 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        color: {% if user_has_upvoted %}white{% else %}#667eea{% endif %};
+        font-weight: 600;
+        text-decoration: none;
+    }
+    
+    .upvote-btn:hover {
+        background: #667eea;
+        color: white;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
+    }
+    
+    .comments-section {
+        margin-top: 2rem;
+        padding-top: 2rem;
+        border-top: 2px solid #dee2e6;
+    }
+    
+    .comment-form {
+        background: #f8f9fa;
+        padding: 1.5rem;
+        border-radius: 8px;
+        margin-bottom: 2rem;
+    }
+    
+    .comment-item {
+        background: white;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        padding: 1.25rem;
+        margin-bottom: 1rem;
+    }
+    
+    .comment-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.75rem;
+    }
+    
+    .comment-author {
+        font-weight: 600;
+        color: #333;
+    }
+    
+    .comment-date {
+        font-size: 0.875rem;
+        color: #6c757d;
+    }
+    
+    .comment-text {
+        color: #495057;
+        line-height: 1.6;
+        white-space: pre-wrap;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="feature-request-detail-container py-5">
+    <div class="card" style="border: none; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); border-radius: 12px; overflow: hidden;">
+        <div class="detail-header">
+            <h2>{{ feature_request.title }}</h2>
+            <div class="detail-meta">
+                <span class="request-type-badge">{{ feature_request.get_request_type_display }}</span>
+                <span class="status-badge">{{ feature_request.get_status_display }}</span>
+                <span>by {{ feature_request.user.get_full_name|default:feature_request.user.username }}</span>
+                <span>{{ feature_request.created_at|date:"F j, Y" }}</span>
+            </div>
+        </div>
+        
+        <div class="detail-body">
+            <div class="action-bar">
+                <form method="post" action="{% url 'core:feature_request_detail' feature_request.id %}" class="d-inline" style="margin: 0;">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="upvote">
+                    <button type="submit" class="upvote-btn">
+                        <i class="bi bi-arrow-up-circle{% if user_has_upvoted %}-fill{% endif %}"></i>
+                        <span>{{ upvote_count }} Upvote{{ upvote_count|pluralize }}</span>
+                    </button>
+                </form>
+                <div style="color: #6c757d;">
+                    <i class="bi bi-chat-left-text"></i>
+                    <span>{{ comment_count }} Comment{{ comment_count|pluralize }}</span>
+                </div>
+                <div class="ms-auto d-flex gap-2">
+                    {% if feature_request.user == user %}
+                    <a href="{% url 'core:feature_request_delete' feature_request.id %}" class="btn btn-outline-danger" onclick="return confirm('Are you sure you want to delete this feature request? This action cannot be undone.');">
+                        <i class="bi bi-trash"></i> Delete
+                    </a>
+                    {% endif %}
+                    <a href="{% url 'core:feature_request_list' %}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left"></i> Back to Timeline
+                    </a>
+                </div>
+            </div>
+            
+            <div class="detail-description">
+                {{ feature_request.description }}
+            </div>
+            
+            <div class="comments-section">
+                <h4 class="mb-4">
+                    <i class="bi bi-chat-left-text"></i> Comments ({{ comment_count }})
+                </h4>
+                
+                <!-- Comment Form -->
+                <div class="comment-form">
+                    <form method="post" action="{% url 'core:feature_request_detail' feature_request.id %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="comment">
+                        
+                        <div class="mb-3">
+                            <label for="{{ comment_form.comment.id_for_label }}" class="form-label">
+                                Add a Comment
+                            </label>
+                            {{ comment_form.comment }}
+                            {% if comment_form.comment.errors %}
+                                <div class="text-danger small mt-1">
+                                    {% for error in comment_form.comment.errors %}
+                                        <div><i class="bi bi-exclamation-circle"></i> {{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-send-fill"></i> Post Comment
+                        </button>
+                    </form>
+                </div>
+                
+                <!-- Comments List -->
+                {% if comments %}
+                    {% for comment in comments %}
+                    <div class="comment-item">
+                        <div class="comment-header">
+                            <span class="comment-author">{{ comment.user.get_full_name|default:comment.user.username }}</span>
+                            <span class="comment-date">{{ comment.created_at|timesince }} ago</span>
+                        </div>
+                        <div class="comment-text">
+                            {{ comment.comment }}
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="text-center text-muted py-4">
+                        <i class="bi bi-chat-left" style="font-size: 2rem; opacity: 0.3;"></i>
+                        <p class="mt-2">No comments yet. Be the first to comment!</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

@@ -1,0 +1,297 @@
+{% extends 'base.html' %}
+{% load core_extras %}
+
+{% block title %}Feature Requests - GameReady{% endblock %}
+
+{% block extra_css %}
+<style>
+    .feature-request-container {
+        max-width: 1000px;
+        margin: 0 auto;
+    }
+    
+    .feature-request-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 2rem;
+        text-align: center;
+        border-radius: 12px 12px 0 0;
+    }
+    
+    .feature-request-header h2 {
+        margin: 0;
+        font-size: 2rem;
+        font-weight: 600;
+    }
+    
+    .feature-request-header p {
+        margin: 0.5rem 0 0 0;
+        opacity: 0.9;
+        font-size: 1.1rem;
+    }
+    
+    .filters-bar {
+        background: #f8f9fa;
+        padding: 1rem 1.5rem;
+        border-bottom: 1px solid #dee2e6;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        align-items: center;
+        justify-content: space-between;
+    }
+    
+    .filter-group {
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
+    }
+    
+    .request-card {
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+        background: white;
+        transition: box-shadow 0.2s ease;
+    }
+    
+    .request-card:hover {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+    
+    .request-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 1rem;
+    }
+    
+    .request-title-section {
+        flex: 1;
+    }
+    
+    .request-title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 0.5rem;
+        text-decoration: none;
+    }
+    
+    .request-title:hover {
+        color: #667eea;
+    }
+    
+    .request-meta {
+        display: flex;
+        gap: 1rem;
+        align-items: center;
+        font-size: 0.875rem;
+        color: #6c757d;
+    }
+    
+    .request-type-badge {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+    
+    .request-type-badge.feature {
+        background: #e3f2fd;
+        color: #1976d2;
+    }
+    
+    .request-type-badge.bug {
+        background: #ffebee;
+        color: #c62828;
+    }
+    
+    .status-badge {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+    
+    .status-badge.open {
+        background: #e8f5e9;
+        color: #2e7d32;
+    }
+    
+    .status-badge.in-progress {
+        background: #fff3e0;
+        color: #e65100;
+    }
+    
+    .status-badge.completed {
+        background: #e3f2fd;
+        color: #1976d2;
+    }
+    
+    .status-badge.rejected {
+        background: #ffebee;
+        color: #c62828;
+    }
+    
+    .status-badge.duplicate {
+        background: #f3e5f5;
+        color: #7b1fa2;
+    }
+    
+    .request-stats {
+        display: flex;
+        gap: 1.5rem;
+        align-items: center;
+    }
+    
+    .stat-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: #6c757d;
+        font-size: 0.875rem;
+    }
+    
+    .upvote-btn {
+        background: transparent;
+        border: 2px solid #dee2e6;
+        border-radius: 8px;
+        padding: 0.5rem 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        color: #6c757d;
+        font-weight: 600;
+    }
+    
+    .upvote-btn:hover {
+        border-color: #667eea;
+        color: #667eea;
+    }
+    
+    .upvote-btn.active {
+        background: #667eea;
+        border-color: #667eea;
+        color: white;
+    }
+    
+    .request-description {
+        color: #495057;
+        line-height: 1.6;
+        margin-bottom: 1rem;
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 3rem 1rem;
+        color: #6c757d;
+    }
+    
+    .empty-state i {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+        opacity: 0.5;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="feature-request-container py-5">
+    <div class="card" style="border: none; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); border-radius: 12px; overflow: hidden;">
+        <div class="feature-request-header">
+            <h2><i class="bi bi-lightbulb-fill"></i> Feature Requests</h2>
+            <p>Share your ideas, report bugs, and help us improve GameReady</p>
+        </div>
+        
+        <div class="filters-bar">
+            <div class="filter-group">
+                <label class="form-label mb-0 me-2" style="font-weight: 600;">Filter:</label>
+                <a href="?sort={{ current_sort }}" class="btn btn-sm {% if not current_type %}btn-primary{% else %}btn-outline-secondary{% endif %}">All</a>
+                <a href="?type=FEATURE&sort={{ current_sort }}" class="btn btn-sm {% if current_type == 'FEATURE' %}btn-primary{% else %}btn-outline-secondary{% endif %}">Features</a>
+                <a href="?type=BUG&sort={{ current_sort }}" class="btn btn-sm {% if current_type == 'BUG' %}btn-primary{% else %}btn-outline-secondary{% endif %}">Bugs</a>
+            </div>
+            
+            <div class="filter-group">
+                <label class="form-label mb-0 me-2" style="font-weight: 600;">Sort:</label>
+                <a href="?type={{ current_type }}&sort=recent" class="btn btn-sm {% if current_sort == 'recent' %}btn-primary{% else %}btn-outline-secondary{% endif %}">Recent</a>
+                <a href="?type={{ current_type }}&sort=popular" class="btn btn-sm {% if current_sort == 'popular' %}btn-primary{% else %}btn-outline-secondary{% endif %}">Popular</a>
+                <a href="?type={{ current_type }}&sort=oldest" class="btn btn-sm {% if current_sort == 'oldest' %}btn-primary{% else %}btn-outline-secondary{% endif %}">Oldest</a>
+            </div>
+            
+            <a href="{% url 'core:feature_request_create' %}" class="btn btn-primary">
+                <i class="bi bi-plus-circle"></i> Submit Request
+            </a>
+        </div>
+        
+        <div style="padding: 1.5rem;">
+            {% if feature_requests %}
+                {% for fr in feature_requests %}
+                <div class="request-card">
+                    <div class="request-header">
+                        <div class="request-title-section">
+                            <a href="{% url 'core:feature_request_detail' fr.id %}" class="request-title">
+                                {{ fr.title }}
+                            </a>
+                            <div class="request-meta">
+                                <span class="request-type-badge {{ fr.request_type|lower }}">{{ fr.get_request_type_display }}</span>
+                                <span class="status-badge {{ fr.status|lower|slugify }}">{{ fr.get_status_display }}</span>
+                                <span>by {{ fr.user.get_full_name|default:fr.user.username }}</span>
+                                <span>{{ fr.created_at|timesince }} ago</span>
+                            </div>
+                        </div>
+                        <div class="request-stats">
+                            <div class="stat-item">
+                                <i class="bi bi-chat-left-text"></i>
+                                <span>{{ fr.comment_count }} comment{{ fr.comment_count|pluralize }}</span>
+                            </div>
+                            <form method="post" action="{% url 'core:feature_request_detail' fr.id %}" class="d-inline" style="margin: 0;">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="upvote">
+                                <button type="submit" class="upvote-btn {% if fr.user_has_upvoted %}active{% endif %}">
+                                    <i class="bi bi-arrow-up-circle{% if fr.user_has_upvoted %}-fill{% endif %}"></i>
+                                    <span>{{ fr.upvotes }}</span>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                    <div class="request-description">
+                        {{ fr.description|truncatewords:50 }}
+                    </div>
+                    <div class="d-flex gap-2">
+                        <a href="{% url 'core:feature_request_detail' fr.id %}" class="btn btn-sm btn-outline-primary">
+                            View Details <i class="bi bi-arrow-right"></i>
+                        </a>
+                        {% if fr.user == user %}
+                        <a href="{% url 'core:feature_request_delete' fr.id %}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Are you sure you want to delete this feature request? This action cannot be undone.');">
+                            <i class="bi bi-trash"></i> Delete
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="empty-state">
+                    <i class="bi bi-inbox"></i>
+                    <h4>No feature requests yet</h4>
+                    <p>Be the first to share your ideas or report a bug!</p>
+                    <a href="{% url 'core:feature_request_create' %}" class="btn btn-primary mt-3">
+                        <i class="bi bi-plus-circle"></i> Submit Your First Request
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+

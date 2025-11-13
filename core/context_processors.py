@@ -1,6 +1,7 @@
 """
 Context processors for GameReady app.
 """
+from django.conf import settings
 
 
 def coach_active_team(request):
@@ -55,6 +56,10 @@ def coach_active_team(request):
         except Exception:
             # If profile doesn't exist or any error, just pass empty context
             pass
+    
+    # Add PostHog configuration to all templates
+    context['POSTHOG_API_KEY'] = getattr(settings, 'POSTHOG_API_KEY', '')
+    context['POSTHOG_HOST'] = getattr(settings, 'POSTHOG_HOST', 'https://app.posthog.com')
     
     return context
 

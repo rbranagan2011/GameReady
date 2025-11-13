@@ -617,6 +617,81 @@ class PlayerPersonalLabel(models.Model):
         return f"{self.athlete.username} - {self.date}: {self.label}"
 
 # Utility methods retained for potential analytics, independent of tags
+class FeatureRequest(models.Model):
+    """
+    Model for feature requests and bug reports submitted by users.
+    Users can upvote and comment on feature requests.
+    """
+    class RequestType(models.TextChoices):
+        FEATURE = 'FEATURE', 'Feature Request'
+        BUG = 'BUG', 'Bug Report'
+    
+    class Status(models.TextChoices):
+        OPEN = 'OPEN', 'Open'
+        IN_PROGRESS = 'IN_PROGRESS', 'In Progress'
+        COMPLETED = 'COMPLETED', 'Completed'
+        REJECTED = 'REJECTED', 'Rejected'
+        DUPLICATE = 'DUPLICATE', 'Duplicate'
+    
+    # User who submitted the request
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='feature_requests')
+    
+    # Request details
+    title = models.CharField(max_length=200, help_text="Brief title for the feature request or bug")
+    description = models.TextField(max_length=2000, help_text="Detailed description of the feature request or bug")
+    request_type = models.CharField(max_length=10, choices=RequestType.choices, default=RequestType.FEATURE)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.OPEN)
+    
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    # Upvotes - users who have upvoted this request
+    upvoted_by = models.ManyToManyField(User, related_name='upvoted_feature_requests', blank=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Feature Request'
+        verbose_name_plural = 'Feature Requests'
+    
+    def __str__(self):
+        return f"{self.get_request_type_display()}: {self.title}"
+    
+    def upvote_count(self):
+        """Return the number of upvotes."""
+        return self.upvoted_by.count()
+    
+    def has_user_upvoted(self, user):
+        """Check if a user has upvoted this request."""
+        return self.upvoted_by.filter(id=user.id).exists()
+
+
+class FeatureRequestComment(models.Model):
+    """
+    Comments on feature requests.
+    """
+    # Feature request this comment belongs to
+    feature_request = models.ForeignKey(FeatureRequest, on_delete=models.CASCADE, related_name='comments')
+    
+    # User who made the comment
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='feature_request_comments')
+    
+    # Comment content
+    comment = models.TextField(max_length=1000, help_text="Your comment")
+    
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['created_at']
+        verbose_name = 'Feature Request Comment'
+        verbose_name_plural = 'Feature Request Comments'
+    
+    def __str__(self):
+        return f"Comment by {self.user.username} on {self.feature_request.title}"
+
+
 class ReadinessStatus:
     @staticmethod
     def get_primary_limiter(report):

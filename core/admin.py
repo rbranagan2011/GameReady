@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Team, Profile, ReadinessReport, TeamTag, EmailVerification, PlayerPersonalLabel
+from .models import Team, Profile, ReadinessReport, TeamTag, EmailVerification, PlayerPersonalLabel, FeatureRequest, FeatureRequestComment
 
 
 @admin.register(Team)
@@ -80,3 +80,45 @@ class PlayerPersonalLabelAdmin(admin.ModelAdmin):
     search_fields = ['athlete__username', 'athlete__first_name', 'athlete__last_name', 'label']
     list_select_related = ['athlete']
     date_hierarchy = 'date'
+
+
+@admin.register(FeatureRequest)
+class FeatureRequestAdmin(admin.ModelAdmin):
+    list_display = ['title', 'user', 'request_type', 'status', 'upvote_count', 'created_at']
+    list_filter = ['request_type', 'status', 'created_at']
+    search_fields = ['title', 'description', 'user__username', 'user__email']
+    list_select_related = ['user']
+    date_hierarchy = 'created_at'
+    readonly_fields = ['created_at', 'updated_at', 'upvote_count_display']
+    filter_horizontal = ['upvoted_by']
+    
+    fieldsets = (
+        ('Request Details', {
+            'fields': ('user', 'title', 'description', 'request_type', 'status')
+        }),
+        ('Engagement', {
+            'fields': ('upvoted_by', 'upvote_count_display')
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    def upvote_count_display(self, obj):
+        return obj.upvote_count()
+    upvote_count_display.short_description = 'Upvotes'
+
+
+@admin.register(FeatureRequestComment)
+class FeatureRequestCommentAdmin(admin.ModelAdmin):
+    list_display = ['feature_request', 'user', 'created_at', 'comment_preview']
+    list_filter = ['created_at']
+    search_fields = ['comment', 'user__username', 'feature_request__title']
+    list_select_related = ['user', 'feature_request']
+    date_hierarchy = 'created_at'
+    readonly_fields = ['created_at', 'updated_at']
+    
+    def comment_preview(self, obj):
+        return obj.comment[:50] + '...' if len(obj.comment) > 50 else obj.comment
+    comment_preview.short_description = 'Comment Preview'

@@ -1,0 +1,156 @@
+{% extends 'base.html' %}
+
+{% block title %}Delete User - Management{% endblock %}
+
+{% block extra_css %}
+<style>
+    .delete-container {
+        max-width: 600px;
+        margin: 0 auto;
+        padding: 2rem 1rem;
+    }
+    
+    .delete-card {
+        border: none;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        border-radius: 12px;
+        overflow: hidden;
+    }
+    
+    .delete-header {
+        background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+        color: white;
+        padding: 2rem;
+        text-align: center;
+    }
+    
+    .delete-header h2 {
+        margin: 0;
+        font-size: 1.75rem;
+        font-weight: 600;
+    }
+    
+    .delete-body {
+        padding: 2.5rem;
+        background: white;
+    }
+    
+    .warning-box {
+        background: #fff3cd;
+        border: 2px solid #ffc107;
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+    }
+    
+    .warning-box i {
+        color: #856404;
+        font-size: 1.5rem;
+        margin-right: 0.75rem;
+    }
+    
+    .user-preview {
+        background: #f8f9fa;
+        border-left: 4px solid #667eea;
+        padding: 1.25rem;
+        border-radius: 6px;
+        margin-bottom: 2rem;
+    }
+    
+    .user-preview h5 {
+        margin: 0 0 0.5rem 0;
+        color: #333;
+    }
+    
+    .user-preview p {
+        margin: 0;
+        color: #6c757d;
+        font-size: 0.9rem;
+    }
+    
+    .info-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+        margin-top: 1rem;
+    }
+    
+    .info-item {
+        padding: 0.75rem;
+        background: white;
+        border-radius: 4px;
+        border: 1px solid #dee2e6;
+    }
+    
+    .info-label {
+        font-size: 0.75rem;
+        color: #6c757d;
+        font-weight: 600;
+        margin-bottom: 0.25rem;
+    }
+    
+    .info-value {
+        font-size: 1rem;
+        color: #333;
+        font-weight: 600;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="delete-container py-5">
+    <div class="card delete-card">
+        <div class="delete-header">
+            <h2><i class="bi bi-exclamation-triangle-fill"></i> Delete User</h2>
+        </div>
+        
+        <div class="delete-body">
+            <div class="warning-box">
+                <i class="bi bi-exclamation-triangle-fill"></i>
+                <strong>Warning:</strong> This action cannot be undone. Deleting this user will permanently remove:
+                <ul style="margin: 0.5rem 0 0 0; padding-left: 1.5rem;">
+                    <li>The user account</li>
+                    <li>User profile and settings</li>
+                    <li>All readiness reports submitted by this user</li>
+                    <li>All team memberships</li>
+                    <li>All feature requests and comments by this user</li>
+                </ul>
+            </div>
+            
+            <div class="user-preview">
+                <h5>{{ target_user.get_full_name|default:target_user.username }}</h5>
+                <p>
+                    <strong>Username:</strong> {{ target_user.username }}<br>
+                    <strong>Email:</strong> {{ target_user.email }}<br>
+                    {% if profile %}
+                        <strong>Role:</strong> {{ profile.get_role_display }}
+                    {% endif %}
+                </p>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <div class="info-label">Readiness Reports</div>
+                        <div class="info-value">{{ reports_count }}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Teams</div>
+                        <div class="info-value">{{ user_teams|length }}</div>
+                    </div>
+                </div>
+            </div>
+            
+            <form method="post">
+                {% csrf_token %}
+                <div class="d-grid gap-2 d-md-flex justify-content-md-between">
+                    <a href="{% url 'core:management_user_detail' target_user.id %}" class="btn btn-outline-secondary btn-lg">
+                        <i class="bi bi-arrow-left"></i> Cancel
+                    </a>
+                    <button type="submit" class="btn btn-danger btn-lg">
+                        <i class="bi bi-trash-fill"></i> Yes, Delete This User
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

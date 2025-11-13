@@ -434,25 +434,73 @@ class JoinTeamForm(forms.Form):
 
 
 class FeatureRequestForm(forms.Form):
-    """Form for users to submit feature requests."""
-    message = forms.CharField(
-        label='Feature Request',
+    """Form for users to submit feature requests and bug reports."""
+    request_type = forms.ChoiceField(
+        choices=[
+            ('FEATURE', 'Feature Request'),
+            ('BUG', 'Bug Report'),
+        ],
+        widget=forms.Select(attrs={
+            'class': 'form-select',
+        }),
+        label='Type',
+        initial='FEATURE'
+    )
+    title = forms.CharField(
+        max_length=200,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Brief title for your request...',
+            'autofocus': True
+        }),
+        label='Title',
+        help_text='A clear, concise title for your feature request or bug report'
+    )
+    description = forms.CharField(
         widget=forms.Textarea(attrs={
             'class': 'form-control',
-            'placeholder': 'Describe your feature request or feedback...',
+            'placeholder': 'Describe your feature request or bug in detail...',
             'rows': 8,
             'style': 'resize: vertical;'
         }),
         help_text='Share your ideas, suggestions, or report issues. We value your feedback!',
         max_length=2000,
-        min_length=10
+        min_length=10,
+        label='Description'
     )
     
-    def clean_message(self):
-        message = self.cleaned_data.get('message', '').strip()
-        if len(message) < 10:
+    def clean_title(self):
+        title = self.cleaned_data.get('title', '').strip()
+        if len(title) < 5:
+            raise forms.ValidationError('Title must be at least 5 characters long.')
+        return title
+    
+    def clean_description(self):
+        description = self.cleaned_data.get('description', '').strip()
+        if len(description) < 10:
             raise forms.ValidationError('Please provide more details (at least 10 characters).')
-        return message
+        return description
+
+
+class FeatureRequestCommentForm(forms.Form):
+    """Form for commenting on feature requests."""
+    comment = forms.CharField(
+        widget=forms.Textarea(attrs={
+            'class': 'form-control',
+            'placeholder': 'Add your comment...',
+            'rows': 4,
+            'style': 'resize: vertical;'
+        }),
+        max_length=1000,
+        min_length=3,
+        label='Comment'
+    )
+    
+    def clean_comment(self):
+        comment = self.cleaned_data.get('comment', '').strip()
+        if len(comment) < 3:
+            raise forms.ValidationError('Comment must be at least 3 characters long.')
+        return comment
 
 
 class UpdateProfileForm(forms.Form):

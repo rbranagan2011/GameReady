@@ -43,8 +43,7 @@ class Command(BaseCommand):
         if created:
             self.stdout.write(f'Created team: {team.name}')
         else:
-            self.stdout.write(f'Team {team.name} already exists. Skipping team creation.')
-            return
+            self.stdout.write(f'Team {team.name} already exists. Continuing with user and report creation...')
 
         # Create coach - Sir Alex Ferguson
         coach_username = 'sir_alex_ferguson'

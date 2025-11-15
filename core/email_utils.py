@@ -105,21 +105,47 @@ GameReady Team
             f"with token {verification_token[:20]}..."
         )
         
-        # Send email
-        send_mail(
-            subject='Verify your GameReady account',
-            message=plain_message,
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[user.email],
-            html_message=html_message,
-            fail_silently=False,  # Raise exception on failure so we can catch it
-        )
+        # Use EmailMessage for better control and to capture SMTP response
+        # Use friendly "From" name to improve deliverability
+        from_email = f"GameReady <{settings.DEFAULT_FROM_EMAIL}>"
         
+        email = EmailMessage(
+            subject='Verify your GameReady account',
+            body=html_message,
+            from_email=from_email,
+            to=[user.email],
+        )
+        email.content_subtype = "html"  # Set content type to HTML
+        email.attach_alternative(plain_message, "text/plain")  # Add plain text alternative
+        
+        # Add proper email headers to reduce spam filtering
+        email.extra_headers = {
+            'Reply-To': settings.DEFAULT_FROM_EMAIL,  # Allow replies
+            'X-Mailer': 'GameReady',  # Identify the application
+            'X-Priority': '1',  # Normal priority
+            'Precedence': 'bulk',  # Indicate transactional email
+        }
+        
+        # Send email
+        result = email.send(fail_silently=False)
+        
+        # Log the result (result is the number of emails sent, should be 1)
         logger.info(
-            f"Verification email sent successfully to {user.email} "
+            f"SMTP send() returned: {result}. "
+            f"Verification email sent to {user.email} "
             f"from {settings.DEFAULT_FROM_EMAIL}. "
             f"Verification URL: {verification_url}"
         )
+        
+        # Note: Django's send() returns successfully if SMTP accepts the email,
+        # but doesn't guarantee delivery. Check SendGrid Activity Feed for actual delivery status.
+        if result == 0:
+            logger.warning(
+                f"SMTP send() returned 0 - email may not have been accepted by server. "
+                f"Check SendGrid Activity Feed for {user.email}"
+            )
+            return False, "Email was not accepted by SMTP server. Check SendGrid Activity Feed."
+        
         return True, None
         
     except Exception as e:

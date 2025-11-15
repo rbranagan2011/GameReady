@@ -13,12 +13,17 @@
                     </div>
                     <h2 class="card-title mb-3">Check Your Email</h2>
                     <p class="text-muted mb-4">
-                        We've sent a verification link to your email address. Please check your inbox and click the link to verify your account.
+                        We've sent a verification link to your email address. Please check your inbox (and spam/junk folder) and click the link to verify your account.
                     </p>
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle"></i> 
+                        <strong>Didn't receive the email?</strong><br>
+                        <strong>Please check your spam/junk folder first!</strong> Verification emails sometimes end up there. The verification link will expire in 24 hours.
+                    </div>
                     <div class="alert alert-info">
                         <i class="bi bi-info-circle"></i> 
-                        <strong>Didn't receive the email?</strong><br>
-                        Check your spam folder or wait a few minutes. The verification link will expire in 24 hours.
+                        <strong>Still can't find it?</strong><br>
+                        Wait a few minutes for delivery, then use the resend option below if needed.
                     </div>
                     
                     {% if email_configured %}

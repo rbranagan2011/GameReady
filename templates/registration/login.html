@@ -145,7 +145,39 @@ document.addEventListener('DOMContentLoaded', function() {
         const dismissed = localStorage.getItem('addToHomeScreenDismissed');
         if (!dismissed) {
             const prompt = document.getElementById('addToHomeScreenPrompt');
-            if (prompt) {
+            const instructions = document.getElementById('addToHomeScreenInstructions');
+            if (prompt && instructions) {
+                // Detect device type and show appropriate instructions
+                const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+                const isAndroid = /Android/.test(navigator.userAgent);
+                
+                if (isIOS) {
+                    instructions.innerHTML = `
+                        <p style="margin: 0 0 8px 0; font-weight: 500;">Install GameReady on your iPhone/iPad:</p>
+                        <ol style="margin: 0; padding-left: 20px; font-size: 13px; color: #495057;">
+                            <li>Tap the <strong>Share button</strong> <i class="bi bi-box-arrow-up" style="font-size: 14px;"></i> at the bottom of your screen</li>
+                            <li>Scroll down and tap <strong>"Add to Home Screen"</strong></li>
+                            <li>Tap <strong>"Add"</strong> in the top right corner</li>
+                        </ol>
+                    `;
+                } else if (isAndroid) {
+                    instructions.innerHTML = `
+                        <p style="margin: 0 0 8px 0; font-weight: 500;">Install GameReady on your Android device:</p>
+                        <ol style="margin: 0; padding-left: 20px; font-size: 13px; color: #495057;">
+                            <li>Tap the <strong>Menu button</strong> <i class="bi bi-three-dots-vertical" style="font-size: 14px;"></i> in your browser (top right)</li>
+                            <li>Select <strong>"Add to Home screen"</strong> or <strong>"Install app"</strong></li>
+                            <li>Tap <strong>"Add"</strong> or <strong>"Install"</strong> to confirm</li>
+                        </ol>
+                    `;
+                } else {
+                    // Generic fallback
+                    instructions.innerHTML = `
+                        <p style="margin: 0 0 8px 0; font-weight: 500;">Install GameReady on your device:</p>
+                        <p style="margin: 0; font-size: 13px; color: #495057;">
+                            Look for the <strong>"Add to Home Screen"</strong> or <strong>"Install"</strong> option in your browser's menu.
+                        </p>
+                    `;
+                }
                 prompt.style.display = 'block';
             }
         }
@@ -164,15 +196,17 @@ document.addEventListener('DOMContentLoaded', function() {
     window.addEventListener('beforeinstallprompt', function(e) {
         e.preventDefault();
         deferredPrompt = e;
-        // Show our custom prompt
+        // Show our custom prompt with Chrome-specific instructions
         const prompt = document.getElementById('addToHomeScreenPrompt');
-        if (prompt) {
+        const instructions = document.getElementById('addToHomeScreenInstructions');
+        if (prompt && instructions) {
+            instructions.innerHTML = `
+                <p style="margin: 0 0 8px 0; font-weight: 500;">Install GameReady:</p>
+                <p style="margin: 0; font-size: 13px; color: #495057;">
+                    Look for the <strong>"Add"</strong> or <strong>"Install"</strong> button that appears in your browser, or tap the menu <i class="bi bi-three-dots-vertical" style="font-size: 14px;"></i> and select <strong>"Install app"</strong>.
+                </p>
+            `;
             prompt.style.display = 'block';
-            // Update instructions for Chrome's native prompt
-            const instructionText = prompt.querySelector('p:last-child');
-            if (instructionText) {
-                instructionText.innerHTML = 'Tap the <strong>"Add"</strong> or <strong>"Install"</strong> button that appears';
-            }
         }
     });
 });
@@ -236,18 +270,15 @@ document.addEventListener('DOMContentLoaded', function() {
             
             <!-- Add to Home Screen Instructions (Mobile Only) -->
             <div id="addToHomeScreenPrompt" class="mt-4" style="display: none;">
-                <div class="alert alert-info" style="border-radius: 12px; padding: 12px; font-size: 13px; position: relative;">
-                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;">
-                        <i class="bi bi-lightbulb" style="font-size: 18px; color: #ffc107;"></i>
-                        <strong style="color: #0d6efd;">Pro Tip</strong>
+                <div class="alert alert-info" style="border-radius: 12px; padding: 15px; font-size: 14px; position: relative;">
+                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                        <i class="bi bi-phone" style="font-size: 20px; color: #0d6efd;"></i>
+                        <strong style="color: #0d6efd;">Add to Home Screen</strong>
                     </div>
-                    <div style="text-align: left; line-height: 1.5;">
-                        <p style="margin: 0 0 6px 0; font-weight: 500;">Add to Home Screen for simplicity</p>
-                        <p style="margin: 0; font-size: 12px; color: #6c757d;">
-                            Tap the <strong>share button</strong> (□↑) in the address bar, then select <strong>"Add to Home Screen"</strong>
-                        </p>
+                    <div id="addToHomeScreenInstructions" style="text-align: left; line-height: 1.6;">
+                        <!-- Instructions will be populated by JavaScript based on device -->
                     </div>
-                    <button type="button" class="btn-close" onclick="document.getElementById('addToHomeScreenPrompt').style.display='none';" style="position: absolute; top: 8px; right: 8px;"></button>
+                    <button type="button" class="btn-close" onclick="document.getElementById('addToHomeScreenPrompt').style.display='none'; localStorage.setItem('addToHomeScreenDismissed', 'true');" style="position: absolute; top: 10px; right: 10px;"></button>
                 </div>
             </div>
         </div>

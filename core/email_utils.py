@@ -98,6 +98,13 @@ Best regards,
 GameReady Team
 """
         
+        # Log email details before sending
+        logger.info(
+            f"Attempting to send verification email to {user.email} "
+            f"from {settings.DEFAULT_FROM_EMAIL} "
+            f"with token {verification_token[:20]}..."
+        )
+        
         # Send email
         send_mail(
             subject='Verify your GameReady account',
@@ -108,7 +115,11 @@ GameReady Team
             fail_silently=False,  # Raise exception on failure so we can catch it
         )
         
-        logger.info(f"Verification email sent successfully to {user.email}")
+        logger.info(
+            f"Verification email sent successfully to {user.email} "
+            f"from {settings.DEFAULT_FROM_EMAIL}. "
+            f"Verification URL: {verification_url}"
+        )
         return True, None
         
     except Exception as e:

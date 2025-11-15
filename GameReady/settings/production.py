@@ -149,3 +149,20 @@ EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
 DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'noreply@gamereadyapp.com')
 BASE_URL = os.environ.get('BASE_URL', 'https://start.gamereadyapp.com')
 
+# Validate email configuration on startup (warn but don't fail)
+# This helps catch configuration issues early
+import logging
+logger = logging.getLogger(__name__)
+
+if not EMAIL_HOST_USER or not EMAIL_HOST_PASSWORD:
+    logger.warning(
+        "Email configuration incomplete: EMAIL_HOST_USER or EMAIL_HOST_PASSWORD not set. "
+        "Email verification and reminders will not work. "
+        "Set these environment variables in Render dashboard."
+    )
+elif not DEFAULT_FROM_EMAIL:
+    logger.warning(
+        "DEFAULT_FROM_EMAIL not set. Using default value. "
+        "Set DEFAULT_FROM_EMAIL environment variable in Render dashboard."
+    )
+

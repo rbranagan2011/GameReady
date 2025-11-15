@@ -17,6 +17,7 @@ from django.urls import reverse
 from django.core.mail import send_mail
 from django.conf import settings
 from .posthog_tracking import track_event, identify_user
+from .email_utils import send_verification_email, is_email_configured
 
 
 def has_management_access(user):
@@ -2693,7 +2694,77 @@ def signup(request):
 
 def verify_email_pending(request):
     """Show email verification pending page."""
-    return render(request, 'core/verify_email_pending.html')
+    # Check if email is configured (for display purposes)
+    email_configured = is_email_configured()
+    
+    context = {
+        'email_configured': email_configured,
+    }
+    return render(request, 'core/verify_email_pending.html', context)
+
+
+def resend_verification_email(request):
+    """Resend verification email to a user."""
+    if request.method != 'POST':
+        messages.error(request, 'Invalid request method.')
+        return redirect('core:verify_email_pending')
+    
+    # Get email from POST data
+    email = request.POST.get('email', '').strip()
+    
+    if not email:
+        messages.error(request, 'Please provide your email address.')
+        return redirect('core:verify_email_pending')
+    
+    # Find user by email
+    try:
+        user = User.objects.get(email=email)
+    except User.DoesNotExist:
+        # Don't reveal if email exists or not (security best practice)
+        messages.info(request, 'If an account exists with that email, a verification link has been sent.')
+        return redirect('core:verify_email_pending')
+    
+    # Check if user is already active
+    if user.is_active:
+        messages.info(request, 'Your account is already verified. You can log in now.')
+        return redirect('login')
+    
+    # Get or create verification record
+    try:
+        verification = user.email_verification
+        # If token is expired, create a new one
+        if verification.is_expired:
+            # Delete old verification and create new one
+            verification.delete()
+            verification = EmailVerification.objects.create(user=user)
+    except EmailVerification.DoesNotExist:
+        # Create new verification record
+        verification = EmailVerification.objects.create(user=user)
+    
+    # Check if already verified
+    if verification.verified:
+        messages.info(request, 'Your email has already been verified. You can log in now.')
+        return redirect('login')
+    
+    # Send verification email
+    success, error_msg = send_verification_email(user, verification.token)
+    
+    if success:
+        messages.success(request, f'Verification email sent to {email}. Please check your inbox.')
+    else:
+        # Provide helpful error message
+        if 'not properly configured' in error_msg.lower():
+            messages.error(
+                request, 
+                'Email service is currently unavailable. Please contact support for assistance.'
+            )
+        else:
+            messages.error(
+                request, 
+                'Failed to send verification email. Please try again later or contact support.'
+            )
+    
+    return redirect('core:verify_email_pending')
 
 
 def verify_email(request, token):
@@ -2711,10 +2782,11 @@ def verify_email(request, token):
     
     # Check if token is expired
     if verification.is_expired:
-        messages.error(request, 'This verification link has expired. Please sign up again to receive a new link.')
-        # Optionally delete the expired verification and user
-        verification.user.delete()
-        return redirect('core:role_selection')
+        messages.error(
+            request, 
+            'This verification link has expired. Please use the resend verification email feature to get a new link.'
+        )
+        return redirect('core:verify_email_pending')
     
     # Verify the email
     verification.verified = True

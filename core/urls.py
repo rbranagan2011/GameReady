@@ -10,6 +10,7 @@ urlpatterns = [
     path('signup/', views.signup, name='signup'),
     path('verify-email/<str:token>/', views.verify_email, name='verify_email'),
     path('verify-email-pending/', views.verify_email_pending, name='verify_email_pending'),
+    path('resend-verification/', views.resend_verification_email, name='resend_verification_email'),
     path('team-setup/coach/', views.team_setup_coach, name='team_setup_coach'),
     path('athlete-setup/', views.athlete_setup, name='athlete_setup'),
     path('join/<str:code>/', views.join_team_link, name='join_team_link'),

@@ -153,7 +153,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 if (isIOS) {
                     instructions.innerHTML = `
-                        <p style="margin: 0 0 8px 0; font-weight: 500;">Install GameReady on your iPhone/iPad:</p>
+                        <p style="margin: 0 0 8px 0; font-weight: 500;">Add GameReady to your iPhone/iPad:</p>
                         <ol style="margin: 0; padding-left: 20px; font-size: 13px; color: #495057;">
                             <li>Tap the <strong>Share button</strong> <i class="bi bi-box-arrow-up" style="font-size: 14px;"></i> at the bottom of your screen</li>
                             <li>Scroll down and tap <strong>"Add to Home Screen"</strong></li>
@@ -162,19 +162,19 @@ document.addEventListener('DOMContentLoaded', function() {
                     `;
                 } else if (isAndroid) {
                     instructions.innerHTML = `
-                        <p style="margin: 0 0 8px 0; font-weight: 500;">Install GameReady on your Android device:</p>
+                        <p style="margin: 0 0 8px 0; font-weight: 500;">Add GameReady to your Android device:</p>
                         <ol style="margin: 0; padding-left: 20px; font-size: 13px; color: #495057;">
                             <li>Tap the <strong>Menu button</strong> <i class="bi bi-three-dots-vertical" style="font-size: 14px;"></i> in your browser (top right)</li>
-                            <li>Select <strong>"Add to Home screen"</strong> or <strong>"Install app"</strong></li>
-                            <li>Tap <strong>"Add"</strong> or <strong>"Install"</strong> to confirm</li>
+                            <li>Select <strong>"Add to Home screen"</strong></li>
+                            <li>Tap <strong>"Add"</strong> to confirm</li>
                         </ol>
                     `;
                 } else {
                     // Generic fallback
                     instructions.innerHTML = `
-                        <p style="margin: 0 0 8px 0; font-weight: 500;">Install GameReady on your device:</p>
+                        <p style="margin: 0 0 8px 0; font-weight: 500;">Add GameReady to your device:</p>
                         <p style="margin: 0; font-size: 13px; color: #495057;">
-                            Look for the <strong>"Add to Home Screen"</strong> or <strong>"Install"</strong> option in your browser's menu.
+                            Look for the <strong>"Add to Home Screen"</strong> option in your browser's menu.
                         </p>
                     `;
                 }
@@ -201,9 +201,9 @@ document.addEventListener('DOMContentLoaded', function() {
         const instructions = document.getElementById('addToHomeScreenInstructions');
         if (prompt && instructions) {
             instructions.innerHTML = `
-                <p style="margin: 0 0 8px 0; font-weight: 500;">Install GameReady:</p>
+                <p style="margin: 0 0 8px 0; font-weight: 500;">Add GameReady to your device:</p>
                 <p style="margin: 0; font-size: 13px; color: #495057;">
-                    Look for the <strong>"Add"</strong> or <strong>"Install"</strong> button that appears in your browser, or tap the menu <i class="bi bi-three-dots-vertical" style="font-size: 14px;"></i> and select <strong>"Install app"</strong>.
+                    Look for the <strong>"Add"</strong> button that appears in your browser, or tap the menu <i class="bi bi-three-dots-vertical" style="font-size: 14px;"></i> and select <strong>"Add to Home screen"</strong>.
                 </p>
             `;
             prompt.style.display = 'block';

@@ -2,11 +2,18 @@
 
 **Purpose**: This document provides comprehensive context about the GameReady application for AI assistants working on the codebase. Reference this at the start of new conversations.
 
+**⚠️ IMPORTANT: Update this document whenever major changes are made to the application!**
+- Add new features, models, or workflows
+- Update code patterns or conventions
+- Document new environment variables or deployment changes
+- Note any breaking changes or important gotchas
+- Keep the "Recent Improvements" section current
+
 ---
 
 ## Application Overview
 
-**GameReady** is a Django web application for tracking daily athlete wellness metrics to help coaches optimize training and reduce injury risk.
+**GameReady** is a Django web application for tracking athlete wellness metrics to help coaches optimize training and reduce injury risk.
 
 ### Core Purpose
 - Athletes log 7 daily wellness metrics (1-10 scale)

@@ -48,17 +48,44 @@
                             <label for="{{ logo_form.logo.id_for_label }}" class="form-label fw-semibold">
                                 Upload Logo
                             </label>
+                            
+                            <!-- File Requirements Info Box -->
+                            <div class="alert alert-info mb-2" role="alert">
+                                <i class="bi bi-info-circle"></i> <strong>File Requirements:</strong>
+                                <ul class="mb-0 mt-2 small">
+                                    <li><strong>Formats:</strong> PNG, JPG/JPEG, or SVG only</li>
+                                    <li><strong>Size:</strong> Maximum 5MB per file</li>
+                                    <li><strong>Dimensions:</strong> Maximum 2000x2000 pixels (for PNG/JPG)</li>
+                                    <li><strong>Storage:</strong> 10MB total per team</li>
+                                </ul>
+                            </div>
+                            
                             {{ logo_form.logo }}
+                            
+                            <!-- Error Messages -->
                             {% if logo_form.logo.errors %}
-                                <div class="text-danger small">
-                                    {% for error in logo_form.logo.errors %}
-                                        <div>{{ error }}</div>
-                                    {% endfor %}
+                                <div class="alert alert-danger mt-2" role="alert">
+                                    <i class="bi bi-exclamation-triangle"></i> <strong>Upload Failed:</strong>
+                                    <ul class="mb-0 mt-2">
+                                        {% for error in logo_form.logo.errors %}
+                                            <li>{{ error }}</li>
+                                        {% endfor %}
+                                    </ul>
                                 </div>
                             {% endif %}
-                            <small class="text-muted d-block mt-1">
-                                PNG, JPG, or SVG. Max 5MB. Recommended: 200x200px or larger.
-                            </small>
+                            
+                            <!-- Helpful Tips -->
+                            <div class="mt-2">
+                                <small class="text-muted d-block">
+                                    <i class="bi bi-lightbulb"></i> <strong>Tips:</strong>
+                                </small>
+                                <ul class="small text-muted mb-0">
+                                    <li>Use PNG or JPG for photos, SVG for logos with text</li>
+                                    <li>Recommended size: 200x200px or larger for best quality</li>
+                                    <li>Square images work best for team logos</li>
+                                    <li>If upload fails, check file size and format match the requirements above</li>
+                                </ul>
+                            </div>
                         </div>
                         
                         <!-- Display Mode -->
@@ -279,6 +306,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const backgroundSettings = document.getElementById('backgroundSettings');
     const opacitySlider = document.getElementById('{{ logo_form.background_opacity.id_for_label }}');
     const opacityValue = document.getElementById('opacityValue');
+    const logoInput = document.getElementById('{{ logo_form.logo.id_for_label }}');
     
     function updateBackgroundSettings() {
         if (displayMode && backgroundSettings) {
@@ -300,6 +328,62 @@ document.addEventListener('DOMContentLoaded', function() {
     if (opacitySlider && opacityValue) {
         opacitySlider.addEventListener('input', function() {
             opacityValue.textContent = '(' + parseFloat(this.value).toFixed(2) + ')';
+        });
+    }
+    
+    // Client-side file validation for immediate feedback
+    if (logoInput) {
+        logoInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            // Remove any previous validation messages (both warning and success)
+            const existingAlerts = logoInput.parentElement.querySelectorAll('.alert-warning, .alert-success');
+            existingAlerts.forEach(function(alert) {
+                alert.remove();
+            });
+            
+            const maxSize = 5 * 1024 * 1024; // 5MB
+            const allowedExtensions = ['.png', '.jpg', '.jpeg', '.svg'];
+            const fileExt = '.' + file.name.split('.').pop().toLowerCase();
+            const fileSizeMB = (file.size / 1024 / 1024).toFixed(2);
+            
+            let validationErrors = [];
+            
+            // Check file size
+            if (file.size > maxSize) {
+                validationErrors.push(`File size (${fileSizeMB}MB) exceeds maximum of 5MB. Please compress or resize.`);
+            }
+            
+            // Check file extension
+            if (!allowedExtensions.includes(fileExt)) {
+                validationErrors.push(`File format "${fileExt}" is not supported. Please use PNG, JPG, or SVG.`);
+            }
+            
+            // Show validation errors if any
+            if (validationErrors.length > 0) {
+                const alertDiv = document.createElement('div');
+                alertDiv.className = 'alert alert-warning mt-2';
+                alertDiv.setAttribute('role', 'alert');
+                alertDiv.innerHTML = '<i class="bi bi-exclamation-triangle"></i> <strong>File Validation:</strong><ul class="mb-0 mt-2"><li>' + 
+                    validationErrors.join('</li><li>') + '</li></ul>';
+                logoInput.parentElement.appendChild(alertDiv);
+                
+                // Clear the file input
+                logoInput.value = '';
+            } else {
+                // Show success message
+                const successDiv = document.createElement('div');
+                successDiv.className = 'alert alert-success mt-2';
+                successDiv.setAttribute('role', 'alert');
+                successDiv.innerHTML = `<i class="bi bi-check-circle"></i> <strong>File selected:</strong> ${file.name} (${fileSizeMB}MB). Ready to upload!`;
+                logoInput.parentElement.appendChild(successDiv);
+                
+                // Remove success message after 3 seconds
+                setTimeout(function() {
+                    successDiv.remove();
+                }, 3000);
+            }
         });
     }
 });

@@ -232,6 +232,13 @@ Required environment variables:
 - **Admin error notifications**: ADMINS setting configured for 500 error email alerts
 - **Test command**: `python manage.py test_email` to test email setup
 
+### Test Coverage & Guardrails
+- **Overall coverage sits at ~60%** after Phase 2; 170+ tests now exercise forms, validation, views, AJAX, and utilities.
+- **Guardrail rule**: run `DJANGO_SETTINGS_MODULE=core.tests.test_settings venv/bin/python3.12 -m coverage run --source=core manage.py test core.tests` and enforce `venv/bin/python3.12 -m coverage report --fail-under=60` (same command should run in CI). Any PR that drops coverage below 60% must add tests before merging.
+- **Coverage buffer**: aim for ≥65% when making larger changes so small regressions do not break the guardrail.
+- **Artifacts**: generate `coverage xml` (for CI/status checks) and `coverage html` (for local visual inspection) whenever the coverage suite runs.
+- **Work habit**: every new feature/fix must ship with matching tests that touch the new lines.
+
 ### User Experience
 - **No success messages**: App flows smoothly without confirmation boxes (see NO_SUCCESS_MESSAGES_RULE)
 - **Mobile optimization**: Prevents double-tap zoom, touch-friendly
@@ -363,6 +370,7 @@ python manage.py delete_user --email user@example.com --force
 - **Small code chunks** - don't overwhelm with large blocks
 - **Comments in code** - explain what each part does
 - **Step-by-step instructions** - break tasks into clear sequential steps
+- **Coverage-first mindset** - run coverage locally and keep overall coverage ≥60%
 
 ---
 

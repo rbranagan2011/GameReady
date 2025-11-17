@@ -2,7 +2,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.contrib.auth import login, authenticate
-from django.contrib.auth.views import LoginView as BaseLoginView
+from django.contrib.auth.views import LoginView as BaseLoginView, LogoutView as BaseLogoutView
 from django.utils import timezone
 from django.contrib import messages
 from django.db.models import Avg, Count, Max, Min, Q
@@ -22,6 +22,18 @@ from django.core.mail import send_mail
 from django.conf import settings
 from .posthog_tracking import track_event, identify_user
 from .email_utils import send_verification_email, is_email_configured
+from .file_utils import log_file_upload_security_event
+from .sanitization import sanitize_text_field, validate_no_html
+from .validation import (
+    validate_date_string, validate_month_string, validate_team_id,
+    validate_athlete_id, validate_target_readiness, validate_team_schedule_json,
+    validate_date_overrides_json, validate_tag_id, validate_numeric_range
+)
+from .audit_logging import (
+    log_user_action, log_team_action, log_data_modification, log_report_submission
+)
+import logging
+import json
 
 
 def has_management_access(user):
@@ -101,7 +113,7 @@ def submit_readiness_report(request):
         if request.user.profile.role != Profile.Role.ATHLETE:
             # If not an athlete, redirect them to the (future) coach dashboard
             messages.warning(request, "You are not an athlete. Redirecting to dashboard.")
-            return redirect('coach_dashboard')  # We will create this URL later
+            return redirect('core:coach_dashboard')
     except Profile.DoesNotExist:
         # Handle case where user has no profile
         messages.error(request, "Your profile is not set up. Please contact your coach.")
@@ -165,6 +177,43 @@ class CustomLoginView(BaseLoginView):
     """Custom login view to handle unverified email accounts."""
     template_name = 'registration/login.html'
     
+    def _handle_inactive_user(self, identifier):
+        """Return redirect response if identifier belongs to inactive/unverified user."""
+        if not identifier:
+            return None
+        
+        user = None
+        try:
+            user = User.objects.get(email=identifier)
+        except User.DoesNotExist:
+            try:
+                user = User.objects.get(username=identifier)
+            except User.DoesNotExist:
+                return None
+        
+        if user and not user.is_active:
+            try:
+                verification = user.email_verification
+                if not verification.verified:
+                    if verification.is_expired:
+                        messages.error(
+                            self.request,
+                            'Your verification link has expired. Please sign up again.'
+                        )
+                    else:
+                        messages.warning(
+                            self.request,
+                            'Please verify your email address before logging in. Check your inbox for the verification link.'
+                        )
+                    return redirect('core:verify_email_pending')
+            except EmailVerification.DoesNotExist:
+                messages.warning(
+                    self.request,
+                    'Your account is not active. Please contact support.'
+                )
+                return redirect('login')
+        return None
+    
     def dispatch(self, request, *args, **kwargs):
         # If user is already authenticated, redirect to their dashboard
         if request.user.is_authenticated:
@@ -186,32 +235,9 @@ class CustomLoginView(BaseLoginView):
         # Check if user exists but is inactive (unverified email)
         # Django's form uses 'username' field, but it can contain email or username
         identifier = form.cleaned_data.get('username')
-        user = None
-        
-        # Try to find user by email first, then username (matching backend logic)
-        try:
-            user = User.objects.get(email=identifier)
-        except User.DoesNotExist:
-            try:
-                user = User.objects.get(username=identifier)
-            except User.DoesNotExist:
-                pass  # Let Django handle the invalid login
-        
-        # If user found but inactive, provide helpful message
-        if user and not user.is_active:
-            # Check if they have an unverified email
-            try:
-                verification = user.email_verification
-                if not verification.verified:
-                    if verification.is_expired:
-                        messages.error(self.request, 'Your verification link has expired. Please sign up again.')
-                    else:
-                        messages.warning(self.request, 'Please verify your email address before logging in. Check your inbox for the verification link.')
-                    return redirect('core:verify_email_pending')
-            except EmailVerification.DoesNotExist:
-                # No verification record - treat as inactive account
-                messages.warning(self.request, 'Your account is not active. Please contact support.')
-                return redirect('login')
+        inactive_response = self._handle_inactive_user(identifier)
+        if inactive_response:
+            return inactive_response
         
         # Proceed with normal login
         response = super().form_valid(form)
@@ -220,8 +246,39 @@ class CustomLoginView(BaseLoginView):
         if self.request.user.is_authenticated:
             identify_user(self.request.user)
             track_event(self.request.user, 'user_logged_in')
+            
+            # Log login for audit trail
+            log_user_action(
+                action_type='user_login',
+                user=self.request.user,
+                success=True,
+                details={'ip_address': self.request.META.get('REMOTE_ADDR', 'unknown')}
+            )
         
         return response
+    
+    def form_invalid(self, form):
+        identifier = form.data.get('username')
+        inactive_response = self._handle_inactive_user(identifier)
+        if inactive_response:
+            return inactive_response
+        return super().form_invalid(form)
+
+
+class CustomLogoutView(BaseLogoutView):
+    """Custom logout view to add audit logging."""
+    
+    def dispatch(self, request, *args, **kwargs):
+        # Log logout before the user is logged out
+        if request.user.is_authenticated:
+            log_user_action(
+                action_type='user_logout',
+                user=request.user,
+                success=True,
+                details={'ip_address': request.META.get('REMOTE_ADDR', 'unknown')}
+            )
+        
+        return super().dispatch(request, *args, **kwargs)
 
 
 def home(request):
@@ -374,17 +431,21 @@ def coach_dashboard(request):
     
     # Handle target update
     if request.method == 'POST' and 'target_readiness' in request.POST:
+        dashboard_url = reverse('core:coach_dashboard')
+        redirect_url = f'{dashboard_url}?date={selected_date.strftime("%Y-%m-%d")}'
         try:
             new_target = int(request.POST.get('target_readiness'))
             if 0 <= new_target <= 100:
                 coach_team.target_readiness = new_target
                 coach_team.save()
                 messages.success(request, f"Target updated to {new_target}%")
+                return redirect(redirect_url)
             else:
                 messages.error(request, "Target must be between 0 and 100")
+                return redirect(redirect_url)
         except ValueError:
             messages.error(request, "Invalid target value")
-        return redirect(f'core:coach_dashboard?date={selected_date.strftime("%Y-%m-%d")}')
+            return redirect(redirect_url)
     
     # Determine day tag for selected date from team schedule
     try:
@@ -564,8 +625,8 @@ def coach_dashboard(request):
                 'readiness': readiness,
                 'pill': pill,
                 'submitted': True,
-                'comment': (report.comments or '').strip() if hasattr(report, 'comments') else '',
-                'has_comment': bool(getattr(report, 'comments', '').strip()),
+                'comment': (report.comments or '').strip() if hasattr(report, 'comments') and report.comments else '',
+                'has_comment': bool((getattr(report, 'comments', None) or '').strip()),
                 'teams': athlete_teams,  # Add teams list for display
                 'is_multiple_teams': len(athlete_teams) > 1
             })
@@ -1473,6 +1534,7 @@ def player_dashboard(request):
 
     context = {
         'today_score': today_score,
+        'today_report': today_report,
         'seven_day_avg': seven_day_avg,
         'seven_day_min': seven_day_min,
         'seven_day_max': seven_day_max,
@@ -3043,6 +3105,16 @@ def athlete_setup(request):
                 profile.save()
                 # Clear join_code from session
                 request.session.pop('join_code', None)
+                
+                # Log team join for audit trail
+                log_team_action(
+                    action_type='team_joined',
+                    user=request.user,
+                    team_id=team.id,
+                    team_name=team.name,
+                    success=True
+                )
+                
                 messages.success(request, f'Joined team "{team.name}"!')
                 return redirect('core:player_dashboard')
         
@@ -3122,6 +3194,17 @@ def join_team_link(request, code):
                     profile.save()
             # Clear join_code from session if present
             request.session.pop('join_code', None)
+            
+            # Log team join for audit trail
+            log_team_action(
+                action_type='team_joined',
+                user=user,
+                team_id=team.id,
+                team_name=team.name,
+                success=True,
+                details={'via': 'join_link'}
+            )
+            
             messages.success(request, f'Successfully joined "{team.name}"!')
             # Redirect to appropriate dashboard
             if user.profile.role == Profile.Role.COACH:
@@ -3475,7 +3558,6 @@ def team_admin(request):
                 logger = logging.getLogger(__name__)
                 logger.error(f"Logo form invalid. Errors: {logo_form.errors.as_json()}")
                 messages.error(request, 'Logo upload failed. Please check the file type/size and try again.')
-                return redirect('core:team_admin')
         elif action == 'remove_logo':
             if team.logo:
                 team.logo.delete(save=False)

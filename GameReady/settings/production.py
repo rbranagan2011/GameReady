@@ -8,6 +8,57 @@ from .base import *
 import os
 from pathlib import Path
 
+# Sentry SDK for error tracking and performance monitoring
+# Only initialize if SENTRY_DSN is configured
+SENTRY_DSN = os.environ.get('SENTRY_DSN', '').strip()
+if SENTRY_DSN:
+    import sentry_sdk
+    from sentry_sdk.integrations.django import DjangoIntegration
+    from sentry_sdk.integrations.logging import LoggingIntegration
+    
+    # Configure Sentry
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        integrations=[
+            DjangoIntegration(
+                transaction_style='url',  # Track transactions by URL
+                middleware_spans=True,  # Track middleware performance
+                signals_spans=True,  # Track Django signals
+                cache_spans=True,  # Track cache operations
+            ),
+            LoggingIntegration(
+                level=None,  # Capture all log levels
+                event_level=None,  # Send all log events as Sentry events
+            ),
+        ],
+        # Set traces_sample_rate to 1.0 to capture 100% of transactions for performance monitoring
+        # In production, you may want to reduce this to 0.1 (10%) to reduce overhead
+        traces_sample_rate=float(os.environ.get('SENTRY_TRACES_SAMPLE_RATE', '0.1')),
+        
+        # Set profiles_sample_rate to profile performance
+        # 1.0 = 100% of transactions, 0.1 = 10%
+        profiles_sample_rate=float(os.environ.get('SENTRY_PROFILES_SAMPLE_RATE', '0.1')),
+        
+        # Send release information
+        release=os.environ.get('RENDER_GIT_COMMIT', None),  # Use Render's git commit as release
+        
+        # Environment name
+        environment=os.environ.get('SENTRY_ENVIRONMENT', 'production'),
+        
+        # Filter out health check endpoints and other noise
+        ignore_errors=[
+            'django.http.Http404',
+            'django.http.Http403',
+            'django.core.exceptions.PermissionDenied',
+        ],
+        
+        # Additional context
+        before_send=lambda event, hint: event,  # Can add custom filtering here if needed
+        
+        # Enable performance monitoring
+        enable_tracing=True,
+    )
+
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.environ.get('SECRET_KEY')
 if not SECRET_KEY:
@@ -103,10 +154,31 @@ LOGGING = {
             'class': 'logging.StreamHandler',
             'formatter': 'verbose',
         },
+        # Sentry handler for error-level logs (if Sentry is configured)
+        'sentry': {
+            'level': 'ERROR',
+            'class': 'logging.NullHandler',  # Sentry SDK handles this automatically
+        } if SENTRY_DSN else {
+            'level': 'ERROR',
+            'class': 'logging.NullHandler',
+        },
     },
     'root': {
-        'handlers': ['file', 'console'],
+        'handlers': ['file', 'console'] + (['sentry'] if SENTRY_DSN else []),
         'level': 'INFO',
+    },
+    # Loggers for specific apps
+    'loggers': {
+        'django': {
+            'handlers': ['file', 'console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'core': {
+            'handlers': ['file', 'console'] + (['sentry'] if SENTRY_DSN else []),
+            'level': 'INFO',
+            'propagate': False,
+        },
     },
 }
 
@@ -216,4 +288,14 @@ if not ADMINS:
     )
 else:
     logger.info(f"Admin email notifications configured for {len(ADMINS)} admin(s)")
+
+# Log Sentry configuration status
+if SENTRY_DSN:
+    logger.info("Sentry error tracking and performance monitoring enabled")
+else:
+    logger.warning(
+        "SENTRY_DSN not configured. Error tracking and performance monitoring disabled. "
+        "Set SENTRY_DSN environment variable in Render dashboard to enable Sentry. "
+        "Sign up at https://sentry.io to get your DSN."
+    )
 

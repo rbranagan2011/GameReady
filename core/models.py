@@ -6,6 +6,19 @@ from datetime import timedelta
 import json
 import string
 import secrets
+from .file_utils import generate_secure_filename
+
+
+def team_logo_upload_to(instance, filename):
+    """
+    Generate secure upload path for team logos.
+    Uses sanitized filenames to prevent path traversal attacks.
+    """
+    # Generate secure filename with team ID for organization
+    # If instance doesn't have ID yet (new team), use None
+    team_id = instance.id if instance.id else None
+    secure_filename = generate_secure_filename(filename, team_id=team_id)
+    return f'team_logos/{secure_filename}'
 
 
 # Create a Team model to group users
@@ -27,7 +40,7 @@ class Team(models.Model):
     
     # Team branding/logo fields
     logo = models.ImageField(
-        upload_to='team_logos/',
+        upload_to=team_logo_upload_to,
         blank=True,
         null=True,
         help_text="Team logo for branding"
@@ -166,6 +179,10 @@ class EmailVerification(models.Model):
 
     class Meta:
         ordering = ['-created_at']
+        indexes = [
+            # Index for cleanup queries (finding expired tokens)
+            models.Index(fields=['expires_at'], name='emailverification_expires_idx'),
+        ]
 
 
 class Profile(models.Model):
@@ -232,6 +249,12 @@ class Profile(models.Model):
         if self.team and self.team not in teams_list:
             teams_list.append(self.team)
         return teams_list
+    
+    class Meta:
+        indexes = [
+            # Index for filtering by role (athletes vs coaches)
+            models.Index(fields=['role'], name='profile_role_idx'),
+        ]
 
 
 class ReadinessReport(models.Model):
@@ -308,6 +331,12 @@ class ReadinessReport(models.Model):
         # This ensures an athlete can only submit one report per day.
         unique_together = ('athlete', 'date_created')
         ordering = ['-date_created']  # Show newest reports first
+        indexes = [
+            # Composite index for athlete-specific date queries (most common query pattern)
+            models.Index(fields=['athlete', 'date_created'], name='rr_athlete_date_idx'),
+            # Single index for date range queries and ordering
+            models.Index(fields=['date_created'], name='rr_date_idx'),
+        ]
 
     def calculate_readiness_score(self):
         """
@@ -612,6 +641,10 @@ class PlayerPersonalLabel(models.Model):
     class Meta:
         unique_together = ('athlete', 'date')
         ordering = ['date']
+        indexes = [
+            # Composite index for athlete-specific date queries
+            models.Index(fields=['athlete', 'date'], name='ppl_athlete_date_idx'),
+        ]
 
     def __str__(self):
         return f"{self.athlete.username} - {self.date}: {self.label}"
@@ -653,6 +686,12 @@ class FeatureRequest(models.Model):
         ordering = ['-created_at']
         verbose_name = 'Feature Request'
         verbose_name_plural = 'Feature Requests'
+        indexes = [
+            # Index for ordering by creation date
+            models.Index(fields=['created_at'], name='featurerequest_created_idx'),
+            # Index for filtering by request type (FEATURE vs BUG)
+            models.Index(fields=['request_type'], name='featurerequest_type_idx'),
+        ]
     
     def __str__(self):
         return f"{self.get_request_type_display()}: {self.title}"

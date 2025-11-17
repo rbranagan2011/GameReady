@@ -40,8 +40,15 @@ def create_email_verification(sender, instance, created, **kwargs):
     Uses transaction.on_commit() to ensure email is sent after database transaction commits.
     """
     if created and not instance.is_active:
-        # Create email verification record
-        verification = EmailVerification.objects.create(user=instance)
+        # Create or refresh email verification record
+        verification, _ = EmailVerification.objects.update_or_create(
+            user=instance,
+            defaults={
+                'token': '',
+                'verified': False,
+                'expires_at': None,
+            },
+        )
         
         # Store values we need for the email (in case instance is modified)
         user_email = instance.email

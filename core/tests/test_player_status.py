@@ -1,7 +1,8 @@
 from django.test import TestCase
 from django.urls import reverse
 from django.contrib.auth.models import User
-from .models import Profile
+
+from core.models import Profile
 
 
 class PlayerStatusTests(TestCase):
@@ -30,8 +31,11 @@ class PlayerStatusTests(TestCase):
         self.assertTrue(r.json()['success'])
         # POST set
         set_url = reverse('core:player_set_status')
-        r2 = self.client.post(set_url, data={'status': 'INJURED', 'note': 'ankle'}, content_type='application/json')
+        r2 = self.client.post(
+            set_url,
+            data={'status': 'INJURED', 'note': 'ankle'},
+            content_type='application/json',
+        )
         self.assertEqual(r2.status_code, 200)
         self.assertEqual(r2.json()['current_status'], 'INJURED')
 
-# Create your tests here.

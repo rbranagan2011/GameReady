@@ -7,6 +7,14 @@ from django.contrib.auth.models import User
 from .models import Team, Profile
 from PIL import Image
 import os
+from .file_utils import (
+    validate_file_content_type,
+    validate_image_dimensions,
+    check_storage_quota,
+    MAX_FILE_SIZE,
+    log_file_upload_security_event,
+)
+from .sanitization import sanitize_text_field, validate_no_html
 
 
 class StepperWidget(forms.Widget):
@@ -100,6 +108,15 @@ class ReadinessReportForm(forms.ModelForm):
         widgets = {
             'comments': forms.Textarea(attrs={'rows': 4, 'class': 'form-control', 'placeholder': 'Enter any additional notes or observations...'}),
         }
+    
+    def clean_comments(self):
+        """Sanitize comments field to prevent XSS attacks."""
+        comments = self.cleaned_data.get('comments', '')
+        if comments:
+            # Sanitize HTML and strip dangerous content
+            sanitized = sanitize_text_field(comments)
+            return sanitized
+        return comments
 
 
 class TeamScheduleForm(forms.ModelForm):
@@ -202,6 +219,19 @@ class TeamTagForm(forms.ModelForm):
             # Set the team for the tag
             self.instance.team = team
     
+    def clean_name(self):
+        """Sanitize tag name to prevent XSS attacks."""
+        name = self.cleaned_data.get('name', '').strip()
+        if name:
+            # Sanitize tag name
+            sanitized = sanitize_text_field(name, max_length=100)
+            # Validate no HTML remains
+            is_valid, error_msg = validate_no_html(sanitized, "Tag name")
+            if not is_valid:
+                raise forms.ValidationError(error_msg)
+            return sanitized
+        return name
+    
     def clean(self):
         cleaned_data = super().clean()
         target_min = cleaned_data.get('target_min')
@@ -222,6 +252,19 @@ class TeamNameForm(forms.ModelForm):
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Team name'})
         }
+    
+    def clean_name(self):
+        """Sanitize team name to prevent XSS attacks."""
+        name = self.cleaned_data.get('name', '').strip()
+        if name:
+            # Sanitize team name
+            sanitized = sanitize_text_field(name, max_length=100)
+            # Validate no HTML remains
+            is_valid, error_msg = validate_no_html(sanitized, "Team name")
+            if not is_valid:
+                raise forms.ValidationError(error_msg)
+            return sanitized
+        return name
 
 
 class TeamLogoForm(forms.ModelForm):
@@ -247,34 +290,167 @@ class TeamLogoForm(forms.ModelForm):
         }
     
     def clean_logo(self):
-        """Validate uploaded logo."""
+        """
+        Validate uploaded logo with comprehensive security checks.
+        
+        Security validations:
+        1. File size check (max 5MB)
+        2. File extension validation
+        3. Content-type validation (actual file content, not just extension)
+        4. Image dimensions validation (max 2000x2000)
+        5. Storage quota check (max 10MB per team)
+        """
         logo = self.cleaned_data.get('logo')
         
         # If no new logo uploaded, keep existing one
         if not logo:
             return self.instance.logo if self.instance else None
         
-        # Check file size (max 5MB)
-        if logo.size > 5 * 1024 * 1024:
-            raise forms.ValidationError("Logo file size must be less than 5MB.")
+        # Get team instance for quota checking
+        team = self.instance
         
-        # Check file type by extension (more reliable than content_type)
+        # Log upload attempt for security audit
+        if team and team.id:
+            log_file_upload_security_event(
+                event_type='upload_attempt',
+                team_id=team.id,
+                user_id=None,  # Will be set in view
+                filename=logo.name,
+                file_size=logo.size,
+                success=False,  # Will update if successful
+            )
+        
+        # 1. Check file size (max 5MB)
+        if logo.size > MAX_FILE_SIZE:
+            file_size_mb = logo.size / 1024 / 1024
+            max_size_mb = MAX_FILE_SIZE / 1024 / 1024
+            error_msg = (
+                f"File is too large ({file_size_mb:.1f}MB). "
+                f"Maximum allowed size is {max_size_mb:.0f}MB. "
+                f"Please compress or resize your image and try again."
+            )
+            if team and team.id:
+                log_file_upload_security_event(
+                    event_type='upload_rejected',
+                    team_id=team.id,
+                    user_id=None,
+                    filename=logo.name,
+                    file_size=logo.size,
+                    success=False,
+                    error_message=error_msg,
+                )
+            raise forms.ValidationError(error_msg)
+        
+        # 2. Check file extension
         valid_extensions = ['.png', '.jpg', '.jpeg', '.svg']
         file_ext = os.path.splitext(logo.name)[1].lower()
         if file_ext not in valid_extensions:
-            raise forms.ValidationError("Logo must be PNG, JPG, or SVG format.")
+            error_msg = (
+                f"File format '{file_ext}' is not supported. "
+                f"Please use PNG, JPG/JPEG, or SVG format only. "
+                f"If your file is in a different format, convert it first using an image editor."
+            )
+            if team and team.id:
+                log_file_upload_security_event(
+                    event_type='upload_rejected',
+                    team_id=team.id,
+                    user_id=None,
+                    filename=logo.name,
+                    file_size=logo.size,
+                    success=False,
+                    error_message=error_msg,
+                )
+            raise forms.ValidationError(error_msg)
         
-        # For raster images (not SVG), validate dimensions
+        # 3. Validate actual file content (content-type validation)
+        # This is critical - verifies the file is actually what it claims to be
+        is_valid, detected_mime, content_error = validate_file_content_type(logo)
+        if not is_valid:
+            # Provide user-friendly error message
+            if "File extension" in (content_error or ""):
+                error_msg = (
+                    f"The file extension ({file_ext}) doesn't match the actual file content. "
+                    f"This file appears to be a different format. "
+                    f"Please ensure you're uploading a valid {file_ext[1:].upper()} image file, "
+                    f"or rename the file with the correct extension."
+                )
+            elif "Invalid image file" in (content_error or ""):
+                error_msg = (
+                    f"The file appears to be corrupted or not a valid image. "
+                    f"Please try opening the file in an image viewer to verify it's valid, "
+                    f"then save it again and try uploading."
+                )
+            else:
+                error_msg = (
+                    f"File validation failed: {content_error or 'File content does not match file extension'}. "
+                    f"Please ensure you're uploading a valid image file in PNG, JPG, or SVG format."
+                )
+            if team and team.id:
+                log_file_upload_security_event(
+                    event_type='upload_rejected',
+                    team_id=team.id,
+                    user_id=None,
+                    filename=logo.name,
+                    file_size=logo.size,
+                    success=False,
+                    error_message=f"Content-type validation failed: {content_error}",
+                )
+            raise forms.ValidationError(error_msg)
+        
+        # 4. For raster images (not SVG), validate dimensions
         if file_ext != '.svg':
-            try:
-                img = Image.open(logo)
-                width, height = img.size
-                if width > 2000 or height > 2000:
-                    raise forms.ValidationError("Logo dimensions must be less than 2000x2000 pixels.")
-                # Reset file pointer for saving
-                logo.seek(0)
-            except Exception as e:
-                raise forms.ValidationError(f"Invalid image file: {str(e)}")
+            is_valid_dim, dimensions, dim_error = validate_image_dimensions(logo)
+            if not is_valid_dim:
+                if dimensions:
+                    width, height = dimensions
+                    error_msg = (
+                        f"Image dimensions ({width}x{height} pixels) exceed the maximum allowed size (2000x2000 pixels). "
+                        f"Please resize your image to be smaller than 2000x2000 pixels and try again. "
+                        f"You can use an image editor or online tool to resize it."
+                    )
+                else:
+                    error_msg = (
+                        f"Could not read image dimensions. The file may be corrupted. "
+                        f"Please try opening the file in an image viewer, then save it again and try uploading."
+                    )
+                if team and team.id:
+                    log_file_upload_security_event(
+                        event_type='upload_rejected',
+                        team_id=team.id,
+                        user_id=None,
+                        filename=logo.name,
+                        file_size=logo.size,
+                        success=False,
+                        error_message=error_msg,
+                    )
+                raise forms.ValidationError(error_msg)
+        
+        # 5. Check storage quota (max 10MB per team)
+        if team and team.id:
+            has_quota, current_usage, quota_limit, quota_error = check_storage_quota(team, logo.size)
+            if not has_quota:
+                current_usage_mb = current_usage / 1024 / 1024
+                quota_mb = quota_limit / 1024 / 1024
+                file_size_mb = logo.size / 1024 / 1024
+                error_msg = (
+                    f"Storage quota exceeded. Your team has used {current_usage_mb:.1f}MB of {quota_mb:.0f}MB total storage. "
+                    f"This file ({file_size_mb:.1f}MB) would exceed the limit. "
+                    f"Please remove your existing logo first, or use a smaller file."
+                )
+                if team and team.id:
+                    log_file_upload_security_event(
+                        event_type='upload_rejected',
+                        team_id=team.id,
+                        user_id=None,
+                        filename=logo.name,
+                        file_size=logo.size,
+                        success=False,
+                        error_message=quota_error,
+                    )
+                raise forms.ValidationError(error_msg)
+        
+        # Reset file pointer for saving
+        logo.seek(0)
         
         return logo
 
@@ -405,6 +581,19 @@ class TeamCreationForm(forms.ModelForm):
         labels = {
             'name': 'Team Name'
         }
+    
+    def clean_name(self):
+        """Sanitize team name to prevent XSS attacks."""
+        name = self.cleaned_data.get('name', '').strip()
+        if name:
+            # Sanitize team name
+            sanitized = sanitize_text_field(name, max_length=100)
+            # Validate no HTML remains
+            is_valid, error_msg = validate_no_html(sanitized, "Team name")
+            if not is_valid:
+                raise forms.ValidationError(error_msg)
+            return sanitized
+        return name
 
     def save(self, commit=True):
         """Create team with auto-generated join_code."""
@@ -431,6 +620,11 @@ class JoinTeamForm(forms.Form):
         code = self.cleaned_data.get('join_code', '').upper().strip()
         if not code:
             raise forms.ValidationError('Please enter a team code.')
+        
+        # Validate code format (6 alphanumeric characters)
+        if len(code) != 6 or not code.isalnum():
+            raise forms.ValidationError('Team code must be 6 alphanumeric characters.')
+        
         try:
             team = Team.objects.get(join_code=code)
             self.cleaned_data['team'] = team
@@ -479,13 +673,31 @@ class FeatureRequestForm(forms.Form):
         title = self.cleaned_data.get('title', '').strip()
         if len(title) < 5:
             raise forms.ValidationError('Title must be at least 5 characters long.')
-        return title
+        
+        # Sanitize title to prevent XSS attacks
+        sanitized = sanitize_text_field(title, max_length=200)
+        
+        # Additional validation: ensure no HTML remains
+        is_valid, error_msg = validate_no_html(sanitized, "Title")
+        if not is_valid:
+            raise forms.ValidationError(error_msg)
+        
+        return sanitized
     
     def clean_description(self):
         description = self.cleaned_data.get('description', '').strip()
         if len(description) < 10:
             raise forms.ValidationError('Please provide more details (at least 10 characters).')
-        return description
+        
+        # Sanitize description to prevent XSS attacks
+        sanitized = sanitize_text_field(description, max_length=2000)
+        
+        # Additional validation: ensure no HTML remains
+        is_valid, error_msg = validate_no_html(sanitized, "Description")
+        if not is_valid:
+            raise forms.ValidationError(error_msg)
+        
+        return sanitized
 
 
 class FeatureRequestCommentForm(forms.Form):
@@ -506,7 +718,16 @@ class FeatureRequestCommentForm(forms.Form):
         comment = self.cleaned_data.get('comment', '').strip()
         if len(comment) < 3:
             raise forms.ValidationError('Comment must be at least 3 characters long.')
-        return comment
+        
+        # Sanitize comment to prevent XSS attacks
+        sanitized = sanitize_text_field(comment, max_length=1000)
+        
+        # Additional validation: ensure no HTML remains
+        is_valid, error_msg = validate_no_html(sanitized, "Comment")
+        if not is_valid:
+            raise forms.ValidationError(error_msg)
+        
+        return sanitized
 
 
 class UpdateProfileForm(forms.Form):
@@ -622,6 +843,11 @@ class JoinTeamByCodeForm(forms.Form):
         code = self.cleaned_data.get('join_code', '').upper().strip()
         if not code:
             raise forms.ValidationError('Please enter a team code.')
+        
+        # Validate code format (6 alphanumeric characters)
+        if len(code) != 6 or not code.isalnum():
+            raise forms.ValidationError('Team code must be 6 alphanumeric characters.')
+        
         try:
             team = Team.objects.get(join_code=code)
             self.cleaned_data['team'] = team

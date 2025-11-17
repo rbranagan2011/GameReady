@@ -73,3 +73,13 @@ EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 DEFAULT_FROM_EMAIL = 'admin@gamereadyapp.com'
 BASE_URL = os.environ.get('BASE_URL', 'http://localhost:8000')
 
+# Cache configuration for development (required for rate limiting)
+# Use LocMemCache for development/testing (works but not shared across processes)
+# Note: For production, use Redis or Memcached
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'unique-snowflake',
+    }
+}
+

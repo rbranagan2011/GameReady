@@ -120,8 +120,9 @@ LOGOUT_REDIRECT_URL = '/login/'
 PASSWORD_RESET_TIMEOUT = 259200  # 3 days in seconds (default is 3 days)
 
 # Rate limiting settings
-# django-ratelimit uses cache backend (defaults to in-memory cache)
-# For production, consider using Redis or Memcached for distributed rate limiting
+# django-ratelimit uses cache backend
+# Production uses database cache (configured in production.py)
+# Development uses in-memory cache (default)
 RATELIMIT_USE_CACHE = 'default'  # Use default cache backend
 
 # Session settings for mobile app persistence

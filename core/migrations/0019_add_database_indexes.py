@@ -13,16 +13,16 @@ class Migration(migrations.Migration):
         # ReadinessReport indexes
         migrations.AddIndex(
             model_name='readinessreport',
-            index=models.Index(fields=['athlete', 'date_created'], name='readinessreport_athlete_date_idx'),
+            index=models.Index(fields=['athlete', 'date_created'], name='rr_athlete_date_idx'),
         ),
         migrations.AddIndex(
             model_name='readinessreport',
-            index=models.Index(fields=['date_created'], name='readinessreport_date_idx'),
+            index=models.Index(fields=['date_created'], name='rr_date_idx'),
         ),
         # PlayerPersonalLabel indexes
         migrations.AddIndex(
             model_name='playerpersonallabel',
-            index=models.Index(fields=['athlete', 'date'], name='playerpersonallabel_athlete_date_idx'),
+            index=models.Index(fields=['athlete', 'date'], name='ppl_athlete_date_idx'),
         ),
         # Profile indexes
         migrations.AddIndex(

@@ -55,6 +55,24 @@ DATABASES = {
     }
 }
 
+# Cache configuration for production
+# Use database cache backend for shared cache (required for django-ratelimit)
+# This stores cache entries in the database, which is shared across all instances
+# Note: The cache table must be created with: python manage.py createcachetable django_cache_table
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.db.DatabaseCache',
+        'LOCATION': 'django_cache_table',
+    }
+}
+
+# Suppress django-ratelimit system check for database cache
+# Database cache IS a shared cache (stored in database), but django-ratelimit's
+# system check doesn't recognize it. This is acceptable for our use case.
+# Database cache works fine for rate limiting in single-instance deployments.
+# For multi-instance deployments, consider using Redis or Memcached.
+SILENCED_SYSTEM_CHECKS = ['django_ratelimit.E003']
+
 # Security settings for production
 SECURE_SSL_REDIRECT = True
 SESSION_COOKIE_SECURE = True

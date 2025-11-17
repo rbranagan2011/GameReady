@@ -20,6 +20,9 @@ else
     mkdir -p media/team_logos
 fi
 
+# Create cache table (required for django-ratelimit with database cache)
+python manage.py createcachetable django_cache_table || true
+
 # Collect static files
 python manage.py collectstatic --noinput
 

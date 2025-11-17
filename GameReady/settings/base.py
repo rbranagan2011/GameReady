@@ -20,6 +20,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django_ratelimit',  # Rate limiting for brute force protection
     'core'
 ]
 
@@ -114,6 +115,14 @@ AUTHENTICATION_BACKENDS = ['core.backends.EmailBackend']
 LOGIN_URL = '/login/'
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/login/'
+
+# Password reset settings
+PASSWORD_RESET_TIMEOUT = 259200  # 3 days in seconds (default is 3 days)
+
+# Rate limiting settings
+# django-ratelimit uses cache backend (defaults to in-memory cache)
+# For production, consider using Redis or Memcached for distributed rate limiting
+RATELIMIT_USE_CACHE = 'default'  # Use default cache backend
 
 # Session settings for mobile app persistence
 # Keep users logged in when they switch apps (30 days)

@@ -71,3 +71,4 @@ class Command(BaseCommand):
         
         self.stdout.write(self.style.SUCCESS(f'✅ User "{username}" ({user_email}) has been deleted successfully.'))
 
+

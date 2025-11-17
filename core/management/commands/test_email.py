@@ -79,3 +79,4 @@ class Command(BaseCommand):
             self.stdout.write('  3. Email provider requiring app-specific password')
             self.stdout.write('  4. Two-factor authentication not configured for SMTP')
 
+

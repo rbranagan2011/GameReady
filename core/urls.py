@@ -5,6 +5,9 @@ app_name = 'core'
 
 urlpatterns = [
     path('', views.home, name='home'),
+    # Legal pages
+    path('privacy-policy/', views.privacy_policy, name='privacy_policy'),
+    path('terms-of-service/', views.terms_of_service, name='terms_of_service'),
     # Registration and onboarding
     path('role-selection/', views.role_selection, name='role_selection'),
     path('signup/', views.signup, name='signup'),

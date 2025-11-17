@@ -214,6 +214,7 @@ Required environment variables:
 - `EMAIL_HOST_PASSWORD` - SendGrid API key
 - `DEFAULT_FROM_EMAIL` - `admin@gamereadyapp.com` (verified in SendGrid)
 - `BASE_URL` - `https://start.gamereadyapp.com`
+- `ADMINS` - (optional but recommended) Admin email for error notifications. Format: `"Name,email@example.com"` or `"email@example.com"`. Multiple admins: `"Name1,email1@example.com;Name2,email2@example.com"`
 - `POSTHOG_API_KEY` - (optional) PostHog analytics
 - `POSTHOG_HOST` - (optional) PostHog host
 
@@ -228,6 +229,7 @@ Required environment variables:
 - **Spam folder reminders**: Prominent reminders to check spam folder
 - **Email deliverability**: Friendly "From" name, proper headers
 - **Configuration validation**: Startup warnings if email not configured
+- **Admin error notifications**: ADMINS setting configured for 500 error email alerts
 - **Test command**: `python manage.py test_email` to test email setup
 
 ### User Experience

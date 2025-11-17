@@ -335,6 +335,12 @@ class UserSignupForm(forms.Form):
         label='Password confirmation',
         widget=forms.PasswordInput(attrs={'class': 'form-control', 'placeholder': 'Confirm password'}),
     )
+    accept_terms = forms.BooleanField(
+        required=True,
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        label='I agree to the Terms of Service and Privacy Policy',
+        error_messages={'required': 'You must accept the Terms of Service and Privacy Policy to create an account.'}
+    )
 
     def clean_first_name(self):
         first_name = self.cleaned_data.get('first_name', '').strip()

@@ -10,6 +10,10 @@ from django.http import JsonResponse
 from datetime import timedelta, datetime
 from django import forms
 from django.db import models
+from django.utils.decorators import method_decorator
+from django_ratelimit.decorators import ratelimit
+from django_ratelimit.exceptions import Ratelimited
+from django.contrib.auth.views import PasswordResetView as BasePasswordResetView
 from .models import ReadinessReport, Profile, TeamTag, TeamSchedule, ReadinessStatus, Team, EmailVerification, PlayerPersonalLabel, FeatureRequest, FeatureRequestComment
 from .forms import ReadinessReportForm, TeamScheduleForm, TeamTagForm, TeamNameForm, TeamLogoForm, UserSignupForm, TeamCreationForm, JoinTeamForm, FeatureRequestForm, FeatureRequestCommentForm, UpdateProfileForm, ChangePasswordForm, JoinTeamByCodeForm, ReminderSettingsForm
 from django.template.loader import render_to_string
@@ -156,6 +160,7 @@ def submit_readiness_report(request):
     return render(request, 'core/submit_report.html', context)
 
 
+@method_decorator(ratelimit(key='ip', rate='5/m', method='POST'), name='post')
 class CustomLoginView(BaseLoginView):
     """Custom login view to handle unverified email accounts."""
     template_name = 'registration/login.html'
@@ -165,6 +170,17 @@ class CustomLoginView(BaseLoginView):
         if request.user.is_authenticated:
             return redirect('core:home')
         return super().dispatch(request, *args, **kwargs)
+    
+    def post(self, request, *args, **kwargs):
+        """Override post to handle rate limiting."""
+        # Check if rate limited
+        if getattr(request, 'limited', False):
+            messages.error(
+                request,
+                'Too many login attempts. Please wait a minute before trying again.'
+            )
+            return self.get(request, *args, **kwargs)
+        return super().post(request, *args, **kwargs)
     
     def form_valid(self, form):
         # Check if user exists but is inactive (unverified email)
@@ -229,6 +245,42 @@ def home(request):
     
     # If not authenticated, always redirect to login page
     return redirect('login')
+
+
+def privacy_policy(request):
+    """
+    Privacy Policy page - accessible without login.
+    """
+    return render(request, 'core/privacy_policy.html')
+
+
+def terms_of_service(request):
+    """
+    Terms of Service page - accessible without login.
+    """
+    return render(request, 'core/terms_of_service.html')
+
+
+@method_decorator(ratelimit(key='ip', rate='3/h', method='POST'), name='post')
+class CustomPasswordResetView(BasePasswordResetView):
+    """Custom password reset view with rate limiting."""
+    template_name = 'registration/password_reset_form.html'
+    email_template_name = 'core/emails/password_reset_email.html'
+    subject_template_name = 'core/emails/password_reset_subject.txt'
+    success_url = '/password-reset/done/'
+    html_email_template_name = 'core/emails/password_reset_email.html'
+    from_email = None  # Uses DEFAULT_FROM_EMAIL from settings
+    
+    def post(self, request, *args, **kwargs):
+        """Override post to handle rate limiting."""
+        # Check if rate limited
+        if getattr(request, 'limited', False):
+            messages.error(
+                request,
+                'Too many password reset requests. Please wait an hour before trying again.'
+            )
+            return self.get(request, *args, **kwargs)
+        return super().post(request, *args, **kwargs)
 
 
 @login_required
@@ -2639,11 +2691,20 @@ def role_selection(request):
     return render(request, 'core/role_selection.html')
 
 
+@ratelimit(key='ip', rate='3/h', method='POST')
 def signup(request):
     """User registration form with role-based redirect."""
     # If already authenticated, redirect to appropriate dashboard
     if request.user.is_authenticated:
         return redirect('core:home')
+    
+    # Check if rate limited
+    if getattr(request, 'limited', False):
+        messages.error(
+            request,
+            'Too many signup attempts. Please wait an hour before trying again.'
+        )
+        return redirect('core:role_selection')
     
     # Get role from session (must come from role_selection)
     selected_role = request.session.get('selected_role')
@@ -2703,8 +2764,17 @@ def verify_email_pending(request):
     return render(request, 'core/verify_email_pending.html', context)
 
 
+@ratelimit(key='ip', rate='3/h', method='POST')
 def resend_verification_email(request):
     """Resend verification email to a user."""
+    # Check if rate limited
+    if getattr(request, 'limited', False):
+        messages.error(
+            request,
+            'Too many verification email requests. Please wait an hour before trying again.'
+        )
+        return redirect('core:verify_email_pending')
+    
     if request.method != 'POST':
         messages.error(request, 'Invalid request method.')
         return redirect('core:verify_email_pending')

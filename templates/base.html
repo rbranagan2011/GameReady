@@ -344,8 +344,16 @@
 
     <!-- Footer -->
     <footer class="bg-light mt-5 py-4">
-        <div class="container text-center">
-            <p class="text-muted mb-0">&copy; 2024 GameReady. Built with Django & Bootstrap.</p>
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6 text-center text-md-start mb-3 mb-md-0">
+                    <p class="text-muted mb-0">&copy; 2024 GameReady. Built with Django & Bootstrap.</p>
+                </div>
+                <div class="col-md-6 text-center text-md-end">
+                    <a href="{% url 'core:privacy_policy' %}" class="text-muted text-decoration-none me-3">Privacy Policy</a>
+                    <a href="{% url 'core:terms_of_service' %}" class="text-muted text-decoration-none">Terms of Service</a>
+                </div>
+            </div>
         </div>
     </footer>
 

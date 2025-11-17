@@ -149,6 +149,28 @@ EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
 DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'admin@gamereadyapp.com')
 BASE_URL = os.environ.get('BASE_URL', 'https://start.gamereadyapp.com')
 
+# Server email for error notifications (uses same as DEFAULT_FROM_EMAIL)
+SERVER_EMAIL = DEFAULT_FROM_EMAIL
+
+# Admin email configuration for error notifications
+# Format: "Name,email@example.com" or just "email@example.com"
+# Multiple admins: "Name1,email1@example.com;Name2,email2@example.com"
+ADMINS = []
+admin_config = os.environ.get('ADMINS', '').strip()
+if admin_config:
+    # Parse admin configuration
+    # Supports: "Name,email@example.com" or "email@example.com"
+    # Multiple admins separated by semicolon
+    admin_entries = [entry.strip() for entry in admin_config.split(';') if entry.strip()]
+    for entry in admin_entries:
+        if ',' in entry:
+            # Format: "Name,email@example.com"
+            name, email = entry.split(',', 1)
+            ADMINS.append((name.strip(), email.strip()))
+        else:
+            # Format: "email@example.com" (use email as name)
+            ADMINS.append((entry.strip(), entry.strip()))
+
 # Validate email configuration on startup (warn but don't fail)
 # This helps catch configuration issues early
 import logging
@@ -165,4 +187,15 @@ elif not DEFAULT_FROM_EMAIL:
         "DEFAULT_FROM_EMAIL not set. Using default value. "
         "Set DEFAULT_FROM_EMAIL environment variable in Render dashboard."
     )
+
+# Warn if ADMINS not configured (but don't fail)
+if not ADMINS:
+    logger.warning(
+        "ADMINS setting not configured. Error notifications will not be sent to admins. "
+        "Set ADMINS environment variable in Render dashboard. "
+        "Format: 'Name,email@example.com' or 'email@example.com' "
+        "(multiple admins: 'Name1,email1@example.com;Name2,email2@example.com')"
+    )
+else:
+    logger.info(f"Admin email notifications configured for {len(ADMINS)} admin(s)")
 

@@ -96,6 +96,15 @@ class PlayerPartialViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn('Monthly Overview', response.content.decode())
 
+    def test_player_month_partial_includes_day_tags(self):
+        """Regression test: ensure schedule dots remain after month navigation."""
+        url = reverse('core:player_month_partial')
+        response = self.client.get(url, {'month': timezone.now().strftime('%Y-%m')})
+        self.assertEqual(response.status_code, 200)
+        html = response.content.decode()
+        # color hex should appear for tag indicator
+        self.assertIn('#0d6efd', html)
+
 
 class CoachPlayerAjaxTests(TestCase):
     """Tests for coach-facing player AJAX endpoints."""

@@ -1603,7 +1603,8 @@ def player_metrics_self_ajax(request):
     AJAX: return the logged-in athlete's metrics for a given date.
     """
     try:
-        if request.user.profile.role != Profile.Role.ATHLETE:
+        profile = request.user.profile
+        if profile.role != Profile.Role.ATHLETE:
             return JsonResponse({'success': False, 'message': 'Access denied'})
     except Profile.DoesNotExist:
         return JsonResponse({'success': False, 'message': 'Profile not found'})
@@ -1636,7 +1637,8 @@ def player_status(request):
     GET: return the player's current status payload. Athlete-only.
     """
     try:
-        if request.user.profile.role != Profile.Role.ATHLETE:
+        profile = request.user.profile
+        if profile.role != Profile.Role.ATHLETE:
             return JsonResponse({'success': False, 'message': 'Access denied'})
     except Profile.DoesNotExist:
         return JsonResponse({'success': False, 'message': 'Profile not found'})
@@ -1698,7 +1700,8 @@ def player_week_partial(request):
     Return the Weekly Overview HTML fragment for the given week_start.
     """
     try:
-        if request.user.profile.role != Profile.Role.ATHLETE:
+        profile = request.user.profile
+        if profile.role != Profile.Role.ATHLETE:
             return JsonResponse({'success': False, 'message': 'Access denied'})
     except Profile.DoesNotExist:
         return JsonResponse({'success': False, 'message': 'Profile not found'})
@@ -1796,7 +1799,8 @@ def player_month_partial(request):
     Return the Monthly Overview HTML fragment for the given month (YYYY-MM).
     """
     try:
-        if request.user.profile.role != Profile.Role.ATHLETE:
+        profile = request.user.profile
+        if profile.role != Profile.Role.ATHLETE:
             return JsonResponse({'success': False, 'message': 'Access denied'})
     except Profile.DoesNotExist:
         return JsonResponse({'success': False, 'message': 'Profile not found'})
@@ -1821,14 +1825,70 @@ def player_month_partial(request):
     start_weekday = first_day.weekday()
     for _ in range(start_weekday):
         month_cells.append({'date': None})
+
+    user_teams_list = profile.get_teams()
+    schedules_map = {}
+    for team in user_teams_list:
+        try:
+            schedules_map[team.id] = TeamSchedule.objects.get(team=team)
+        except TeamSchedule.DoesNotExist:
+            continue
+
+    month_start = datetime(current_year, current_month, 1).date()
+    month_end = datetime(current_year, current_month, days_in_month).date()
+    personal_labels_map = {
+        pl.date: pl.label
+        for pl in PlayerPersonalLabel.objects.filter(
+            athlete=request.user,
+            date__gte=month_start,
+            date__lte=month_end,
+        )
+    }
+
+    primary_team = getattr(profile, 'team', None)
+    primary_team_target = int(getattr(primary_team, 'target_readiness', 70) or 70) if primary_team else 70
+
+    def target_range_for_tag(tag_obj, default_midpoint: int = 70) -> tuple[int, int]:
+        try:
+            if tag_obj and getattr(tag_obj, 'target_min', None) is not None and getattr(tag_obj, 'target_max', None) is not None:
+                return int(tag_obj.target_min), int(tag_obj.target_max)
+        except Exception:
+            pass
+        midpoint = default_midpoint
+        return max(0, midpoint - 5), min(100, midpoint + 5)
+
     for day in range(1, days_in_month + 1):
         d = datetime(current_year, current_month, day).date()
         score = ReadinessReport.objects.filter(athlete=request.user, date_created=d).values_list('readiness_score', flat=True).first()
+
+        day_tags = []
+        primary_tag_obj = None
+        for team in user_teams_list:
+            sched = schedules_map.get(team.id)
+            if not sched:
+                continue
+            tag_obj = sched.get_day_tag(d)
+            if tag_obj:
+                day_tags.append((team.name, tag_obj.name, tag_obj.color))
+                if not primary_tag_obj:
+                    primary_tag_obj = tag_obj
+
+        personal_label = personal_labels_map.get(d)
+        rmin, rmax = target_range_for_tag(primary_tag_obj, default_midpoint=primary_team_target)
+        status = None
+        if score is not None:
+            status = 'above' if score > rmax else ('in' if rmin <= score <= rmax else 'below')
+
         month_cells.append({
             'date': d,
             'day': day,
             'date_str': d.strftime('%Y-%m-%d'),
             'score': score,
+            'range_min': rmin,
+            'range_max': rmax,
+            'status': status,
+            'day_tags': day_tags,
+            'personal_label': personal_label,
         })
     while len(month_cells) % 7 != 0:
         month_cells.append({'date': None})

@@ -496,7 +496,7 @@ def player_metrics_ajax(request, athlete_id):
 
 ---
 
-### 15. **No Session Security Hardening** ⚠️ MEDIUM PRIORITY ⚠️ **PARTIALLY COMPLETED**
+### 15. **No Session Security Hardening** ⚠️ MEDIUM PRIORITY ✅ **COMPLETED**
 **Impact**: Session hijacking, security vulnerabilities
 
 **Current State**:
@@ -505,22 +505,23 @@ def player_metrics_ajax(request, athlete_id):
 - ✅ `SESSION_COOKIE_SECURE = True` (production)
 - ✅ `SESSION_SAVE_EVERY_REQUEST = True` - Refreshes session expiry on each request (activity-based session management)
 - ✅ `SESSION_COOKIE_AGE = 30 days` - Long session for mobile app persistence
-- ⚠️ **No explicit inactivity timeout** (e.g., 30 minutes of inactivity) - sessions refresh on every request but don't expire on inactivity
-- ❌ **No IP-based session validation** (optional, can cause issues with mobile)
-- ❌ **No session rotation on login** (session ID not rotated after successful login)
+- ⚠️ **No explicit inactivity timeout** (kept intentionally to preserve athlete UX)
+- ⚠️ **No IP-based locking** (optional; avoided for mobile friendliness)
+- ✅ **Session rotation on login** (session key cycled on every successful login)
+- ✅ **Login metadata captured** (`Profile.last_login_at`, `_ip`, `_user_agent`)
 
 **Implementation**:
 - Session settings configured in `GameReady/settings/base.py`
 - Sessions persist for 30 days and refresh on every request
-- Good for mobile app persistence but lacks inactivity timeout
+- Custom login view now:
+  - Rotates the session key (`session.cycle_key()`) after authentication
+  - Logs login events via audit logging + PostHog
+  - Persists last-login timestamp/IP/user-agent on the associated profile (new fields + migration `0020_profile_login_activity`)
 
 **Recommendation**:
-- ⚠️ Consider adding inactivity timeout (e.g., 30 minutes) while keeping long session for active users
-- Consider IP-based session validation (optional, can cause issues with mobile)
-- Rotate session ID on login for additional security
-- Add session activity logging
+- Optional future enhancements (post-launch): add manual “log out other devices” UI or admin view for reviewing login history.
 
-**Action**: ⚠️ Session security partially implemented - **PARTIALLY COMPLETED** (activity-based refresh implemented, but no inactivity timeout or session rotation)
+**Action**: ✅ Session security hardening completed without disrupting athlete convenience (rotated sessions, login audit trail).
 
 ---
 

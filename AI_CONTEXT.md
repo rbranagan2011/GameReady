@@ -239,6 +239,11 @@ Required environment variables:
 - **Artifacts**: generate `coverage xml` (for CI/status checks) and `coverage html` (for local visual inspection) whenever the coverage suite runs.
 - **Work habit**: every new feature/fix must ship with matching tests that touch the new lines.
 
+### Session Security
+- Sessions stay active for 30 days with `SESSION_SAVE_EVERY_REQUEST = True` so athletes/coaches rarely have to re-authenticate.
+- `CustomLoginView` now cycles the session key after every successful login (mitigates session fixation without shortening the lifetime).
+- Each login writes `last_login_at`, `last_login_ip`, and `last_login_user_agent` to the user’s profile (migration `0020_profile_login_activity`) so staff can audit recent activity when needed.
+
 ### User Experience
 - **No success messages**: App flows smoothly without confirmation boxes (see NO_SUCCESS_MESSAGES_RULE)
 - **Mobile optimization**: Prevents double-tap zoom, touch-friendly

@@ -239,6 +239,21 @@ class Profile(models.Model):
         default=True,
         help_text="Enable daily reminder emails at 12pm local time"
     )
+    last_login_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Timestamp of the most recent successful login"
+    )
+    last_login_ip = models.GenericIPAddressField(
+        null=True,
+        blank=True,
+        help_text="IP address used for the most recent login"
+    )
+    last_login_user_agent = models.CharField(
+        max_length=512,
+        blank=True,
+        help_text="User agent string captured at last login"
+    )
 
     def __str__(self):
         return f"{self.user.username} ({self.get_role_display()})"

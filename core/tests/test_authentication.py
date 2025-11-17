@@ -81,6 +81,32 @@ class LoginTests(TestCase):
         response = self.client.get(self.login_url)
         self.assertEqual(response.status_code, 302)  # Redirected to dashboard
 
+    def test_login_rotates_session_and_logs_profile_activity(self):
+        """Login should rotate the session key and store last-login metadata."""
+        session = self.client.session
+        session['prelogin'] = '1'
+        session.save()
+        original_session_key = session.session_key
+
+        response = self.client.post(
+            self.login_url,
+            {
+                'username': 'athlete@example.com',
+                'password': 'athletepass123'
+            },
+            HTTP_USER_AGENT='GameReadyTest/1.0'
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(response.wsgi_request.user.is_authenticated)
+        self.assertNotEqual(original_session_key, self.client.session.session_key)
+
+        profile = self.athlete.profile
+        profile.refresh_from_db()
+        self.assertIsNotNone(profile.last_login_at)
+        self.assertEqual(profile.last_login_ip, '127.0.0.1')
+        self.assertEqual(profile.last_login_user_agent, 'GameReadyTest/1.0')
+
 
 class LogoutTests(TestCase):
     """Tests for user logout."""

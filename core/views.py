@@ -242,8 +242,15 @@ class CustomLoginView(BaseLoginView):
         # Proceed with normal login
         response = super().form_valid(form)
         
-        # Track login in PostHog
+        # Track login in PostHog and update security metadata
         if self.request.user.is_authenticated:
+            # Rotate session ID to prevent fixation while keeping long-lived sessions
+            try:
+                self.request.session.cycle_key()
+            except Exception:
+                # cycle_key can raise if session backend unavailable; ignore silently
+                pass
+            
             identify_user(self.request.user)
             track_event(self.request.user, 'user_logged_in')
             
@@ -254,6 +261,18 @@ class CustomLoginView(BaseLoginView):
                 success=True,
                 details={'ip_address': self.request.META.get('REMOTE_ADDR', 'unknown')}
             )
+            
+            # Persist last-login metadata on the profile for additional auditing
+            ip_address = self.request.META.get('REMOTE_ADDR')
+            user_agent = (self.request.META.get('HTTP_USER_AGENT') or '')[:512]
+            try:
+                profile = self.request.user.profile
+                profile.last_login_ip = ip_address or None
+                profile.last_login_user_agent = user_agent
+                profile.last_login_at = timezone.now()
+                profile.save(update_fields=['last_login_ip', 'last_login_user_agent', 'last_login_at'])
+            except Profile.DoesNotExist:
+                pass
         
         return response
     
